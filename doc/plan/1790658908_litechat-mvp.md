@@ -5,6 +5,16 @@
 - Primary basis: `doc/study/1790658228_litechat_core_functionality_feasibility.md`
 - Current repository state at planning: clean `main`; repository contains `AGENTS.md` and the completed study only; no Django application, tests, dependency manifest, canonical docs, or CodeRange config exists.
 
+## Execution Notes
+
+- Execution branch: `feature/litechat-mvp`.
+- Proxy-contract inspection found no LiteChat proxy documentation or matching injected environment-variable names in this repository/runtime. `VSCODE_PROXY_URI` is present but does not establish an LLM proxy API. A separate `/home/coder` application documents a generic OpenAI-compatible `LLM_API_URL`, but it is outside this repository and is not evidence of the requested LiteChat contract; it is not being reused.
+- Runtime inspection found Python 3.12.3 and Django 5.2.17 in `/home/coder/.venv`; system `python3` has no Django installed. No `requests` package is installed in that virtualenv. The target repository itself had no code/config before execution.
+- A1/A2 and proxy-dependent work are blocked pending authoritative proxy contract, provider/model, credential ownership, and deployment-audience answers. No provider endpoint or request schema has been inferred.
+- B3 is partially complete: safe environment-driven development/production settings, SQLite path, host/origin configuration, and static settings exist; CodeRange-specific host/CSRF/HTTPS values remain unverified.
+- A local CodeRange-port smoke attempt found port `5001` already occupied by another Django application (its URL configuration exposed unrelated admin/accounts/campaigns/feed routes); this app did not stop or modify that process. Target-app reachability on `5001` is blocked until the port owner/platform allocation is clarified.
+- The app is currently only a Django foundation and neutral startup/health page. No conversations, models, provider choices, or proxy calls are implemented.
+
 ## OPEN QUESTIONS
 
 These questions affect the proxy integration, data ownership, or deployment. Resolve them during the first execution task. Do not guess an API contract or commit secrets. If the answer is not available from authoritative project/platform documentation, pause the dependent work and request the missing decision/input.
@@ -101,18 +111,18 @@ The exact project package name can be chosen during execution; these are likely 
 
 ### A. Preflight and Contract Gate
 
-- [ ] **A1. Verify the LiteChat proxy before writing proxy integration code.** Inspect authoritative docs/config available in the environment and record the proxy base URL configuration key, authentication method, endpoint(s), request/response schema, error/status mapping, provider/model identifier format, provider coverage, enabled model catalog mechanism, request limits/timeouts, and cancellation behavior. Do not make a real request or expose secrets merely to discover the contract.
+- [ ] **A1. Verify the LiteChat proxy before writing proxy integration code.** Inspect authoritative docs/config available in the environment and record the proxy base URL configuration key, authentication method, endpoint(s), request/response schema, error/status mapping, provider/model identifier format, provider coverage, enabled model catalog mechanism, request limits/timeouts, and cancellation behavior. Do not make a real request or expose secrets merely to discover the contract. **Blocked:** repository/runtime inspection found no LiteChat contract or corresponding configuration; request authoritative documentation/inputs from the user.
 - [ ] **A2. Resolve the OPEN QUESTIONS.** Confirm which named providers/models are actually supported, whether credentials are shared proxy credentials or provider-specific server environment variables, and whether the deployment is restricted single-user or needs authenticated ownership. If any answer is unavailable, stop the dependent implementation work and request that exact information; do not substitute guessed LiteLLM/OpenAI-compatible behavior.
 - [ ] **A3. Record the verified integration decision.** Add a concise implementation note to this plan or a non-secret project doc: confirmed proxy contract source, provider coverage, model-list strategy, environment-variable names only, and whether streaming is supported. Keep all secret values out of the plan and Git.
-- [ ] **A4. Decide streaming conditionally.** If the verified proxy supports a documented stream and a CodeRange-compatible server/proxy path can be tested, include SSE as a bounded implementation task. Otherwise use non-streaming responses and record streaming as a limitation. This decision must not delay a working non-streaming MVP.
+- [x] **A4. Decide streaming conditionally.** No proxy stream contract or CodeRange stream path is verifiable yet, so the current MVP decision is non-streaming. Revisit only if authoritative proxy documentation and CodeRange testing later confirm SSE support; streaming is not a release blocker.
 
 ### B. Django and SQLite Foundation
 
-- [ ] **B1. Inspect available Python/CodeRange runtime constraints** and select a compatible, minimal Django version and outbound HTTP dependency only after checking whether the standard library or an existing dependency is adequate.
-- [ ] **B2. Create the Django project and `chat` app** with `manage.py`, settings, root URL configuration, ASGI/WSGI entry points, template/static configuration, and a minimal page route.
-- [ ] **B3. Configure runtime settings safely:** SQLite path/default, `DEBUG`, environment-derived `SECRET_KEY`, `ALLOWED_HOSTS`, static settings, and deployment-specific CSRF/HTTPS proxy settings based on verified platform behavior. Do not hardcode production secrets or trust proxy headers without confirmation.
-- [ ] **B4. Add dependency and ignore configuration.** Pin or constrain only required runtime dependencies; ignore `.env`, local database files, caches, and generated artifacts. Add an environment example with placeholder values only and confirmed variable names only.
-- [ ] **B5. Run baseline Django checks** and confirm a fresh local SQLite database can be created. Record exact commands/results in the execution notes.
+- [x] **B1. Inspect available Python/CodeRange runtime constraints** and select a compatible, minimal Django version and outbound HTTP dependency only after checking whether the standard library or an existing dependency is adequate. Python 3.12.3 and Django 5.2.17 are available in `/home/coder/.venv`; use the Django 5.2 series. No outbound HTTP dependency was added; standard-library HTTP remains sufficient for the non-streaming baseline pending the proxy contract.
+- [x] **B2. Create the Django project and `chat` app** with `manage.py`, settings, root URL configuration, ASGI/WSGI entry points, template/static configuration, and a minimal page route. Added `config/`, `chat/`, and a neutral template/health endpoint.
+- [ ] **B3. Configure runtime settings safely:** SQLite path/default, `DEBUG`, environment-derived `SECRET_KEY`, `ALLOWED_HOSTS`, static settings, and deployment-specific CSRF/HTTPS proxy settings based on verified platform behavior. Do not hardcode production secrets or trust proxy headers without confirmation. **Partial:** base settings are environment-driven, `DEBUG` defaults off, and production startup requires `DJANGO_SECRET_KEY`; CodeRange-specific values remain pending platform information.
+- [x] **B4. Add dependency and ignore configuration.** Pin or constrain only required runtime dependencies; ignore `.env`, local database files, caches, and generated artifacts. Add an environment example with placeholder values only and confirmed variable names only. Added Django 5.2 constraints, `.gitignore`, and `.env.example` containing only local Django placeholders; no proxy variable names were invented.
+- [x] **B5. Run baseline Django checks** and confirm a fresh local SQLite database can be created. Record exact commands/results in the execution notes. `manage.py check` passed; built-in migrations applied to SQLite; two foundation tests passed; `makemigrations --check --dry-run` reported no changes; development client returned HTTP 200 for `/` and `/healthz/`; production settings correctly rejected a missing `DJANGO_SECRET_KEY`.
 
 ### C. Models and Migrations
 
@@ -159,8 +169,8 @@ The exact project package name can be chosen during execution; these are likely 
 ### H. CodeRange Startup and Validation
 
 - [ ] **H1. Verify CodeRange runtime instructions and configuration** including process command, exposed host/interface, required host/CSRF settings, injected environment-variable names, outbound proxy access, and persistent writable SQLite location. Do not record actual secret values.
-- [ ] **H2. Start the application on port `5001`** using the required CodeRange-compatible command and bind address. Identify port conflicts rather than silently changing ports.
-- [ ] **H3. Verify reachability and static assets** through the CodeRange endpoint, not only local Django `runserver`.
+- [ ] **H2. Start the application on port `5001`** using the required CodeRange-compatible command and bind address. Identify port conflicts rather than silently changing ports. **Blocked:** another Django app currently owns port 5001; its process was left untouched.
+- [ ] **H3. Verify reachability and static assets** through the CodeRange endpoint, not only local Django `runserver`. **Blocked:** port 5001 does not route to this project, and no separate CodeRange endpoint/configuration is available in the repository.
 - [ ] **H4. Exercise key flows on CodeRange:** create a new chat, select an enabled provider/model, submit and receive a response using a mock/stub or explicitly approved configured proxy, reload and reopen history, continue with prior context, and safely display a proxy failure.
 - [ ] **H5. If streaming was selected, verify the real CodeRange serving/reverse-proxy path** does not buffer or prematurely terminate SSE and that disconnects close upstream work when supported.
 - [ ] **H6. Verify SQLite persistence across the expected restart lifecycle** or document if CodeRange storage is ephemeral and requires a persistent volume/configuration change.
