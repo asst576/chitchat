@@ -1,10 +1,10 @@
 # CodeRange and Proxy Footguns
 
-## LiteChat Cannot Bind Port 5001 Yet
+## Distinguish Local Port 5001 From CodeRange Reachability
 
-The current requested LiteChat port is `5001`, but `127.0.0.1:5001` is occupied by a different application. A startup attempt for LiteChat fails with `That port is already in use.`; the listener returns HTTP 404 for LiteChat's `/healthz/` and `/api/providers/` endpoints. TCP reachability therefore does not mean LiteChat is serving there.
+The prior port-5001 service was stopped only after explicit user authorization. LiteChat now binds `0.0.0.0:5001`. Its health, workspace, CSS/JavaScript, provider catalog, live create/reopen/continue chat flow, and safe invalid-model response pass through the local container interface.
 
-Earlier, port `5002` was selected to preserve the incumbent service, and a local Django smoke test there passed. The latest request changes the target back to `5001`; the existing process was not stopped or replaced. Its owner must authorize freeing/reconfiguring `5001`, or the platform must provide a different process/route allocation. No external CodeRange route mapping is available in this workspace. Local Django test-client or loopback success does not verify CodeRange routing.
+The environment provides a `VSCODE_PROXY_URI` template for the external CodeRange port route, but requesting the port-5001 health endpoint from this execution environment fails with connection refused (errno 111). Local loopback/container-interface success does not establish external CodeRange reachability or static serving. The platform route must be repaired or verified from a network that can reach it before claiming deployment readiness. Private-access policy and SQLite persistence across restarts also remain unverified.
 
 ## Server-Side Proxy Keys
 
