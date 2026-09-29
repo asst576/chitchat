@@ -4,11 +4,11 @@
 
 During implementation, `127.0.0.1:5001` responded with a different Django application (including unrelated admin, accounts, campaigns, and feed routes). The user explicitly requested that this existing service remain running. LiteChat did not stop or replace it, and LiteChat has not been verified as reachable on port `5001`.
 
-The user selected port `5002` for LiteChat. A local Django smoke test on `127.0.0.1:5002` passed. Do not stop or replace the existing `5001` process. CodeRange must confirm that `5002` is exposed and provide its route/URL mapping before claiming the app is reachable. Local Django test-client or loopback success does not verify CodeRange routing.
+The user selected port `5002` for LiteChat. A local Django smoke test on `127.0.0.1:5002` passed. Do not stop or replace the existing `5001` process. No CodeRange route mapping for `5002` is available in this workspace, so it is not yet possible to determine whether the platform exposes that port externally. Obtain/verify its route mapping before claiming the app is reachable. Local Django test-client or loopback success does not verify CodeRange routing.
 
 ## Server-Side Proxy Keys
 
-The proxy docs name `BUILD_OPENAI_KEY`, `BUILD_ANTHROPIC_KEY`, and `BUILD_GOOGLE_KEY`. The app checks the relevant variable and sends it only from Django to the fixed proxy host. `.env.example` values are placeholders, not working keys. The current implementation environment did not have those key variables injected, so no live provider request was made.
+The proxy docs name `BUILD_OPENAI_KEY`, `BUILD_ANTHROPIC_KEY`, and `BUILD_GOOGLE_KEY`. The app checks the relevant variable and sends it only from Django to the fixed proxy host. `.env.example` values are placeholders, not working keys. Although the user reports that these variables are configured in CodeRange, they were absent from this execution process, so live provider requests were skipped. Verify injection into the app worker without printing or sharing values.
 
 Never paste actual key values into Git-tracked files, issue descriptions, logs, frontend configuration, or browser storage. Configure them with the platform's secret/environment mechanism. The app does not load `.env` automatically.
 
