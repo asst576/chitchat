@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#122b2a">
+  <title>LiteChat workspace</title>
+  <base href="./">
+  <link rel="stylesheet" href="static/chat/chat.css">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar" aria-label="Conversation history">
+      <a class="wordmark" href="./" aria-label="LiteChat home">
+        <span class="wordmark-mark" aria-hidden="true">L</span>
+        <span>litechat<span class="wordmark-period">.</span></span>
+      </a>
+
+      <button class="new-chat-button" id="new-chat" type="button">
+        <span aria-hidden="true">+</span>
+        New conversation
+      </button>
+
+      <div class="history-heading">
+        <span>RECENT</span>
+        <span class="history-count" id="history-count">0</span>
+      </div>
+      <nav class="history-nav">
+        <ul class="history-list" id="history-list" aria-label="Recent conversations"></ul>
+        <p class="history-empty" id="history-empty">Your conversations will appear here.</p>
+      </nav>
+
+      <div class="sidebar-bottom">
+        <span class="privacy-dot" aria-hidden="true"></span>
+        <span>Private workspace</span>
+      </div>
+    </aside>
+
+    <main class="workspace">
+      <header class="topbar">
+        <div class="topbar-context">
+          <span class="eyebrow">MODEL INTERFACE</span>
+          <span class="topbar-title">A quieter place to think.</span>
+        </div>
+        <div class="model-controls">
+          <label class="select-wrap">
+            <span class="sr-only">Provider</span>
+            <select id="provider-select" aria-label="Provider"></select>
+          </label>
+          <span class="select-divider" aria-hidden="true">/</span>
+          <label class="select-wrap model-select-wrap">
+            <span class="sr-only">Model</span>
+            <select id="model-select" aria-label="Model"></select>
+          </label>
+        </div>
+      </header>
+
+      <section class="conversation-area" aria-label="Conversation">
+        <div class="message-list" id="message-list" aria-live="polite" aria-relevant="additions text">
+          <div class="welcome-card" id="welcome-card">
+            <span class="welcome-kicker">A NEW THREAD</span>
+            <h1>What would you<br>like to untangle?</h1>
+            <p>Choose a configured model, write a thought, and start from here.</p>
+          </div>
+        </div>
+      </section>
+
+      <div class="status-line" id="status-line" role="status" aria-live="polite"></div>
+
+      <footer class="composer-wrap">
+        <form class="composer" id="prompt-form">
+          {% csrf_token %}
+          <label class="sr-only" for="prompt-input">Your message</label>
+          <textarea id="prompt-input" name="prompt" rows="1" maxlength="20000"
+            placeholder="Write a message..." required></textarea>
+          <div class="composer-bottom">
+            <span class="composer-hint">Enter to send <span aria-hidden="true">|</span> Shift + Enter for a new line</span>
+            <button class="send-button" id="send-button" type="submit" aria-label="Send message">
+              <span>Send</span>
+              <span aria-hidden="true">&gt;</span>
+            </button>
+          </div>
+        </form>
+        <p class="proxy-disclosure" id="proxy-disclosure"></p>
+      </footer>
+    </main>
+  </div>
+  <script src="static/chat/chat.js" defer></script>
+</body>
+</html>
