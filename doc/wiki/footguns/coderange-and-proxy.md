@@ -2,9 +2,9 @@
 
 ## Distinguish Local Port 5001 From CodeRange Reachability
 
-The prior port-5001 service was stopped only after explicit user authorization. LiteChat now binds `0.0.0.0:5001`. Its health, workspace, CSS/JavaScript, provider catalog, live create/reopen/continue chat flow, and safe invalid-model response pass through the local container interface.
+The prior port-5001 service was stopped only after explicit user authorization. LiteChat now binds `0.0.0.0:5001`, mounted at `/proxy/5001/`. Keep browser asset and API URLs below this prefix: the page uses `<base href="./">`, relative CSS/JavaScript URLs, and an API root derived from `document.baseURI`. Django keeps `STATIC_URL = "/static/"` for upstream requests after CodeRange strips `/proxy/5001`.
 
-The environment's `VSCODE_PROXY_URI` uses the route pattern `/proxy/{{port}}/`; for port 5001, the browser URL is `https://<workspace-host>.coderange.net/proxy/5001/`. The route hostname resolves, but requesting its `/healthz/` endpoint from this execution environment fails with connection refused (errno 111). Local loopback/container-interface success does not establish external CodeRange reachability or static serving. The CodeRange platform owner must verify/enable the private port-5001 forwarding rule and HTTPS ingress. This execution environment cannot distinguish a platform ingress issue from an egress restriction. Private-access policy and SQLite persistence across restarts also remain unverified.
+The injected `VSCODE_PROXY_URI` pattern `/proxy/{{port}}/` gives the browser URL `https://<workspace-host>.coderange.net/proxy/5001/`. The user reports the page loads. Local checks confirm the rendered CSS/JavaScript URLs stay below the prefix, and both files serve successfully after simulating CodeRange's prefix stripping. Direct external requests from this execution environment return transport errors, so confirm in the browser that CSS, JavaScript, and API requests succeed after a hard refresh. Private-access policy and SQLite persistence across restarts also remain unverified.
 
 ## Server-Side Proxy Keys
 

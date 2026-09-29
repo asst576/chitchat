@@ -2,12 +2,25 @@ import json
 import os
 from unittest.mock import patch
 
+from django.conf import settings
 from django.test import Client, TestCase
 
 from chat.models import Conversation, Message
 
 
 class ChatViewTests(TestCase):
+    def test_workspace_asset_urls_are_relative_to_the_proxy_mount(self):
+        response = self.client.get("/")
+        html = response.content.decode()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(settings.STATIC_URL, "/static/")
+        self.assertIn('<base href="./">', html)
+        self.assertIn('href="static/chat/chat.css"', html)
+        self.assertIn('src="static/chat/chat.js"', html)
+        javascript = (settings.BASE_DIR / "static" / "chat" / "chat.js").read_text(encoding="utf-8")
+        self.assertIn('new URL("api", document.baseURI)', javascript)
+
     @patch.dict(os.environ, {"BUILD_OPENAI_KEY": "test-openai-key"}, clear=True)
     def test_provider_catalog_lists_documented_ids_without_returning_keys(self):
         response = self.client.get("/api/providers/")

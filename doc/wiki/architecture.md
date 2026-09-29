@@ -12,6 +12,10 @@ Browser -> Django views -> conversation service -> provider-specific proxy clien
 
 There is no browser-to-provider request and no direct database access from JavaScript.
 
+## Reverse-Proxy Subpath
+
+CodeRange mounts the workspace below `/proxy/5001/`. The page declares `<base href="./">` and uses relative CSS/JavaScript references so the browser keeps requests below that mount. For example, assets resolve to `/proxy/5001/static/chat/chat.css` and `/proxy/5001/static/chat/chat.js`. JavaScript builds its API root from `document.baseURI`, producing `/proxy/5001/api`. Django retains `STATIC_URL = "/static/"`; CodeRange strips its `/proxy/5001` routing prefix before forwarding, so Django's static handler and API receive `/static/...` and `/api/...` paths.
+
 ## Django Areas
 
 - `config/settings.py`: Django, SQLite, environment settings, templates, and static files.

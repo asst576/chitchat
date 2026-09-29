@@ -1,4 +1,3 @@
-{% load static %}
 <!doctype html>
 <html lang="en">
 <head>
@@ -6,12 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#122b2a">
   <title>LiteChat workspace</title>
-  <link rel="stylesheet" href="{% static 'chat/chat.css' %}">
+  <base href="./">
+  <link rel="stylesheet" href="static/chat/chat.css">
 </head>
 <body>
   <div class="app-shell">
     <aside class="sidebar" aria-label="Conversation history">
-      <a class="wordmark" href="/" aria-label="LiteChat home">
+      <a class="wordmark" href="./" aria-label="LiteChat home">
         <span class="wordmark-mark" aria-hidden="true">L</span>
         <span>litechat<span class="wordmark-period">.</span></span>
       </a>
@@ -85,6 +85,6 @@
       </footer>
     </main>
   </div>
-  <script src="{% static 'chat/chat.js' %}" defer></script>
+  <script src="static/chat/chat.js" defer></script>
 </body>
 </html>

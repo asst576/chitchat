@@ -12,7 +12,7 @@
   const statusLine = document.querySelector("#status-line");
   const proxyDisclosure = document.querySelector("#proxy-disclosure");
   const csrfToken = document.querySelector("[name=csrfmiddlewaretoken]").value;
-  const apiRoot = "/api";
+  const apiRoot = new URL("api", document.baseURI).pathname.replace(/\/$/, "");
 
   let modelOptions = [];
   let conversations = [];
