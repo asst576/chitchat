@@ -141,13 +141,13 @@
     const marker = document.createElement("span");
     marker.className = "message-marker";
     marker.setAttribute("aria-hidden", "true");
-    marker.textContent = message.role === "assistant" ? "L" : "Y";
+    marker.textContent = message.role === "assistant" ? "C" : "Y";
 
     const content = document.createElement("div");
     content.className = "message-content";
     const meta = document.createElement("div");
     meta.className = "message-meta";
-    meta.textContent = message.role === "assistant" ? "LiteChat" : "You";
+    meta.textContent = message.role === "assistant" ? "ChitChat" : "You";
     const bubble = document.createElement("div");
     bubble.className = "message-bubble";
 

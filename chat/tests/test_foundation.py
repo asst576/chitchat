@@ -14,7 +14,8 @@ class WorkspaceFoundationTests(TestCase):
         response = self.client.get("/")
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "LiteChat")
+        self.assertContains(response, "ChitChat")
+        self.assertNotContains(response, "LiteChat")
         self.assertContains(response, "New conversation")
 
     def test_health_check_returns_ok(self):

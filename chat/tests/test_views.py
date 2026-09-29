@@ -20,6 +20,8 @@ class ChatViewTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(settings.STATIC_URL, "/static/")
+        self.assertContains(response, "ChitChat")
+        self.assertNotContains(response, "LiteChat")
         self.assertContains(response, "Hi, <strong>chat-user</strong>!", html=True)
         self.assertIn('<base href="/">', html)
         self.assertIn('href="static/chat/chat.css"', html)
@@ -28,7 +30,9 @@ class ChatViewTests(TestCase):
         javascript = (settings.BASE_DIR / "static" / "chat" / "chat.js").read_text(encoding="utf-8")
         stylesheet = (settings.BASE_DIR / "static" / "chat" / "chat.css").read_text(encoding="utf-8")
         self.assertIn('new URL("api", document.baseURI)', javascript)
+        self.assertIn('message.role === "assistant" ? "ChitChat" : "You"', javascript)
         self.assertIn("window.location.assign(new URL(loginUrl, document.baseURI));", javascript)
+        self.assertIn('message.role === "assistant" ? "C" : "Y"', javascript)
         self.assertIn("@media (max-width: 760px)", stylesheet)
         self.assertIn(".account-nav { display: flex; grid-column: 1 / -1;", stylesheet)
 

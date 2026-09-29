@@ -38,6 +38,7 @@ class AccountViewTests(TestCase):
     @override_settings(SIGNUPS_ENABLED=True)
     def test_signup_creates_hashed_user_profile_and_personal_account(self):
         self.make_superuser()
+        signup_page = self.client.get("/accounts/signup/")
         response = self.client.post(
             "/accounts/signup/",
             {
@@ -49,6 +50,10 @@ class AccountViewTests(TestCase):
         )
 
         self.assertRedirects(response, "/accounts/login/")
+        login_page = self.client.get("/accounts/login/")
+        for page in (signup_page, login_page):
+            self.assertContains(page, "ChitChat")
+            self.assertNotContains(page, "LiteChat")
         user = get_user_model().objects.get(username="new-member")
         self.assertNotEqual(user.password, PASSWORD)
         self.assertTrue(user.check_password(PASSWORD))
@@ -177,6 +182,7 @@ class AccountViewTests(TestCase):
         billing_post = self.client.post("/billing/", {"available_credit": "9999"})
 
         self.assertEqual(profile_page.status_code, 200)
+        self.assertContains(profile_page, "ChitChat")
         self.assertContains(profile_page, str(user.pk))
         self.assertContains(profile_page, "Member since")
         self.assertRedirects(saved, "/profile/")
@@ -186,6 +192,7 @@ class AccountViewTests(TestCase):
         self.assertEqual(user.profile.display_name, "A New Name")
         self.assertEqual(user.profile.system_prompt, "Keep my instructions private.")
         self.assertEqual(billing_page.status_code, 200)
+        self.assertContains(billing_page, "ChitChat")
         self.assertContains(billing_page, "[Personal] A New Name")
         self.assertContains(billing_page, "USD $2.00")
         self.assertEqual(billing_post.status_code, 405)
