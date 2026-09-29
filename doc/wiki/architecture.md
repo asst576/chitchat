@@ -14,7 +14,7 @@ There is no browser-to-provider request and no direct database access from JavaS
 
 ## Reverse-Proxy Subpath
 
-CodeRange mounts the workspace below `/proxy/5001/`. The page declares `<base href="./">` and uses relative CSS/JavaScript references so the browser keeps requests below that mount. For example, assets resolve to `/proxy/5001/static/chat/chat.css` and `/proxy/5001/static/chat/chat.js`. JavaScript builds its API root from `document.baseURI`, producing `/proxy/5001/api`. Django retains `STATIC_URL = "/static/"`; CodeRange strips its `/proxy/5001` routing prefix before forwarding, so Django's static handler and API receive `/static/...` and `/api/...` paths.
+CodeRange mounts the workspace below `/proxy/5001/`. The page declares `<base href="./">` and uses relative CSS/JavaScript references so the browser keeps requests below that mount. For example, assets resolve to `/proxy/5001/static/chat/chat.css` and `/proxy/5001/static/chat/chat.js`. JavaScript builds its API root from `document.baseURI`, producing `/proxy/5001/api`. Django retains `STATIC_URL = "/static/"` and serves files from `STATICFILES_DIRS`. The CodeRange proxy must remove `/proxy/5001` before forwarding requests so Django receives `/static/...` and `/api/...`; local checks simulated this mapping, but post-fix browser delivery was not independently verified in this session.
 
 ## Django Areas
 

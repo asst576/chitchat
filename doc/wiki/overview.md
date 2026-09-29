@@ -19,6 +19,6 @@ LiteChat is a private, single-user Django chat application. It provides a browse
 - Responses are non-streaming. Streaming is documented by the proxy but is not implemented.
 - Messages are text-only. Attachments, web search, tools, agents, billing, model racing, automatic context compaction, rename/delete, and import/export are not implemented.
 - Context includes completed user/assistant turns plus the current prompt. Long histories are not automatically truncated or summarized; a proxy/context-size rejection must be handled by starting a shorter conversation.
-- LiteChat binds `0.0.0.0:5001` and is mounted in CodeRange at `/proxy/5001/`. The page now keeps CSS, JavaScript, and API URLs under that prefix; local checks simulating prefix stripping pass. The user reports the page loads, but this execution environment cannot fetch the external route to confirm browser asset delivery after the fix. See the [CodeRange and proxy footgun](footguns/coderange-and-proxy.md).
+- CodeRange mounts LiteChat at `/proxy/5001/`. The page keeps CSS, JavaScript, and API URLs under that prefix; upstream static/API requests use `/static/` and `/api/`. Prefix-stripped local checks pass. The page root is reported reachable, but browser asset delivery after the subpath fix has not been independently confirmed in this session. See the [CodeRange and proxy footgun](footguns/coderange-and-proxy.md).
 
 For installation and local development, see [Setup](setup.md). For request and persistence boundaries, see [Architecture](architecture.md).

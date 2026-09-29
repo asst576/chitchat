@@ -1,10 +1,10 @@
 # CodeRange and Proxy Footguns
 
-## Distinguish Local Port 5001 From CodeRange Reachability
+## CodeRange Subpath and Static Assets
 
-The prior port-5001 service was stopped only after explicit user authorization. LiteChat now binds `0.0.0.0:5001`, mounted at `/proxy/5001/`. Keep browser asset and API URLs below this prefix: the page uses `<base href="./">`, relative CSS/JavaScript URLs, and an API root derived from `document.baseURI`. Django keeps `STATIC_URL = "/static/"` for upstream requests after CodeRange strips `/proxy/5001`.
+LiteChat is intended to listen on `0.0.0.0:5001`, mounted at `/proxy/5001/`. Keep browser asset and API URLs below this prefix: the page uses `<base href="./">`, relative CSS/JavaScript URLs, and an API root derived from `document.baseURI`. This produces `/proxy/5001/static/chat/chat.css`, `/proxy/5001/static/chat/chat.js`, and `/proxy/5001/api/...` browser paths. Django keeps `STATIC_URL = "/static/"`; CodeRange must strip `/proxy/5001` before forwarding so Django receives `/static/...` and `/api/...`.
 
-The injected `VSCODE_PROXY_URI` pattern `/proxy/{{port}}/` gives the browser URL `https://<workspace-host>.coderange.net/proxy/5001/`. The user reports the page loads. Local checks confirm the rendered CSS/JavaScript URLs stay below the prefix, and both files serve successfully after simulating CodeRange's prefix stripping. Direct external requests from this execution environment return transport errors, so confirm in the browser that CSS, JavaScript, and API requests succeed after a hard refresh. Private-access policy and SQLite persistence across restarts also remain unverified.
+The injected `VSCODE_PROXY_URI` pattern `/proxy/{{port}}/` gives the browser URL `https://<workspace-host>.coderange.net/proxy/5001/`. The user reports the page root loads. Local checks confirm the relative URLs and that CSS, JavaScript, API, and chat flows work after simulating prefix stripping. External asset delivery after the fix was not independently confirmed in this session. If styling or interactions fail, inspect the browser network requests and verify the CodeRange proxy both forwards `/proxy/5001/<path>` and strips the mount prefix upstream. Private-access policy and SQLite persistence across restarts remain unverified.
 
 ## Server-Side Proxy Keys
 
