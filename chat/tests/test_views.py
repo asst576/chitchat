@@ -138,6 +138,32 @@ class ChatViewTests(TestCase):
         latest_assistant = conversation.messages.filter(role=Message.Role.ASSISTANT).order_by("-created_at").first()
         self.assertEqual(latest_assistant.provider, "anthropic")
 
+    @patch("chat.services.conversations.ProxyClient.generate", return_value="**bold response**")
+    def test_markdown_assistant_content_remains_unchanged_in_storage_and_api(self, generate):
+        response = self.client.post(
+            "/api/messages/",
+            data=json.dumps(
+                {
+                    "prompt": "**plain user text**",
+                    "provider_id": "openai",
+                    "model_id": "gpt-5.6-luna",
+                }
+            ),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200)
+        conversation_id = response.json()["conversation"]["id"]
+        assistant = Message.objects.get(conversation_id=conversation_id, role=Message.Role.ASSISTANT)
+        user = Message.objects.get(conversation_id=conversation_id, role=Message.Role.USER)
+        reopened = self.client.get("/api/conversations/{}/".format(conversation_id))
+
+        self.assertEqual(assistant.content, "**bold response**")
+        self.assertEqual(user.content, "**plain user text**")
+        self.assertEqual(response.json()["assistant_message"]["content"], assistant.content)
+        self.assertEqual(reopened.json()["messages"][0]["content"], user.content)
+        self.assertEqual(reopened.json()["messages"][1]["content"], assistant.content)
+        generate.assert_called_once()
+
     @patch("chat.services.conversations.ProxyClient.generate")
     def test_proxy_failure_is_safe_and_prompt_is_preserved(self, generate):
         from chat.services.proxy_client import ProxyFailure
