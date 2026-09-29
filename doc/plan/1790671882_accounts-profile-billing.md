@@ -15,8 +15,10 @@
 - Follow-up identified the active port-5001 process as using this workspace and the default `db.sqlite3` (no `DJANGO_SQLITE_PATH` override). Read-only verification found 2 conversations, 6 messages, 0 users, 0 orphan messages, and no owner column; SQLite integrity and foreign-key checks pass.
 - Created a consistent SQLite online backup at `/tmp/opencode/accounts-profile-deployed-snapshot-1790674670.sqlite3` and a restore-check copy at `/tmp/opencode/accounts-profile-deployed-restore-check-1790674670.sqlite3`. Both passed integrity/FK checks and matched the source's conversation metadata and message metadata/order. No message contents were inspected, and the source database was not changed.
 - Rehearsed migrations `0003` and `0004`, profile/billing provisioning, and explicit owner assignment on a separate copy of that backup using `rehearsal-only-admin`. Both legacy conversations were assigned there, zero ownerless rows remained, and all conversation/message metadata/order matched the backup. This test identity was not created or used in the active database.
-- The first/admin user has not yet been created in the active database. Its username must be explicitly selected before provisioning/backfill; do not guess it or use the rehearsal-only user. Keep signup disabled.
-- The port-5001 process is an existing `runserver --noreload` started before this feature code was active and still serves the pre-auth workspace. Do not migrate while it can continue creating ownerless chats; coordinate its replacement with the feature code before schema changes. This branch was separately started and served the login page on local port 5002.
+- The user created the designated first/admin account `admin`; no password was requested, inspected, or recorded. After a fresh backup that included this account, the old pre-auth PID `353073` was stopped with approval, migrations `0003` and `0004` were applied, the idempotent provisioning command ran, and all 2 legacy conversations were assigned to `admin`.
+- Post-migration verification confirms `owner_id` is non-null, both conversations are owned by `admin`, all 6 message rows and their metadata/order match the pre-migration backup, and the database integrity/FK checks pass. Signup was enabled only after these checks.
+- The feature-branch server is running on port 5001 (PID `392189`) with `DJANGO_APP_BASE_PATH=/proxy/5001/` and `DJANGO_SIGNUPS_ENABLED=true`. Health, login, signup, anonymous API 401, and prefix-aware redirect checks passed.
+- After migration, all 46 tests passed; `manage.py check`, `makemigrations --check --dry-run`, and `migrate --check` passed. A transactional smoke check against the migrated active database verified signup, login/logout, profile, billing, owned history, and cross-user 404 behavior; temporary user/session/chat changes rolled back.
 - Living-documentation tasks are intentionally deferred to the separately invoked `sync docs` phase. The user has not authorized rendezvous or merge.
 
 ## Goal
@@ -130,8 +132,8 @@ The billing balance should have a non-negative database constraint and be stored
 
 - [x] Inspect the actual deployed SQLite database read-only; record table/row counts without inspecting message contents. Verified 2 conversations, 6 messages, 0 users, and 0 orphan messages.
 - [x] Back up the deployed database and rehearse restoring the backup before any ownership migration. Verified the SQLite online backup and a separate restore-check copy at the paths recorded above.
-- [ ] Create the operator-designated bootstrap superuser with Django's `createsuperuser` before enabling self-service signup; never promote the first self-registered user automatically. The active database currently has 0 users; waiting for the user-created account and username.
-- [ ] Use that bootstrap superuser as owner of every existing unowned conversation, as directed; record the chosen username for the backfill command. A full rehearsal passed on a separate copy with a rehearsal-only user; active database unchanged.
+- [x] Create the operator-designated bootstrap superuser with Django's `createsuperuser` before enabling self-service signup; never promote the first self-registered user automatically. The user-created superuser `admin` was verified without reading password data.
+- [x] Use that bootstrap superuser as owner of every existing unowned conversation, as directed; record the chosen username for the backfill command. All 2 active legacy conversations are now assigned to `admin`.
 
 ### B. Authentication
 
@@ -150,10 +152,10 @@ The billing balance should have a non-negative database constraint and be stored
 - [x] Add `UserProfile` one-to-one with the active auth user model; include `display_name` and a per-user `system_prompt` text field with an empty default.
 - [x] Add one-to-one `BillingAccount` with account name `Personal`, `USD` currency, active/inactive status, `DecimalField` available balance defaulting to `2.00`, and timestamps; add a non-negative balance constraint and no payment fields.
 - [x] Add a nullable owner FK to `Conversation` first; choose restrictive user-deletion behavior until an explicit account-deletion policy exists. Migration `0003` is nullable; migration `0004` enforces non-null only after a database check.
-- [x] Provision the bootstrap superuser's profile and `Personal` ACTIVE USD `$2.00` billing account using an explicit idempotent setup step. The command was rehearsed on a copy, not run against CodeRange.
+- [x] Provision the bootstrap superuser's profile and `Personal` ACTIVE USD `$2.00` billing account using an explicit idempotent setup step. `provision_bootstrap_account --username admin` ran successfully against the active database.
 - [x] Make conversation listing, detail, continuation, and retry owner-scoped; set owner from `request.user` at creation and reject any submitted owner IDs.
 - [x] Add the explicit legacy-owner management command; require the bootstrap username when unowned rows exist, assign every existing conversation to that account, and preserve all messages and conversation metadata.
-- [ ] Verify legacy row counts/ownership on a copy of the deployed database, then add/apply the later migration making owner non-null only after the human mapping is complete. The actual backup copy passed a full staged rehearsal with a test-only owner; assignment to the selected active admin and the production migration remain pending.
+- [x] Verify legacy row counts/ownership on a copy of the deployed database, then add/apply the later migration making owner non-null only after the human mapping is complete. The copied deployed database passed rehearsal; after the user-selected `admin` mapping was applied and verified, migration `0004` made ownership non-null.
 - [x] Do not mark migration tasks complete if deployed database backup, owner assignment, or row-integrity verification is unavailable.
 
 ### D. Profile, Prompt, and Billing Behavior
