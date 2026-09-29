@@ -17,8 +17,10 @@
 - Rehearsed migrations `0003` and `0004`, profile/billing provisioning, and explicit owner assignment on a separate copy of that backup using `rehearsal-only-admin`. Both legacy conversations were assigned there, zero ownerless rows remained, and all conversation/message metadata/order matched the backup. This test identity was not created or used in the active database.
 - The user created the designated first/admin account `admin`; no password was requested, inspected, or recorded. After a fresh backup that included this account, the old pre-auth PID `353073` was stopped with approval, migrations `0003` and `0004` were applied, the idempotent provisioning command ran, and all 2 legacy conversations were assigned to `admin`.
 - Post-migration verification confirms `owner_id` is non-null, both conversations are owned by `admin`, all 6 message rows and their metadata/order match the pre-migration backup, and the database integrity/FK checks pass. Signup was enabled only after these checks.
-- The feature-branch server is running on port 5001 (PID `392189`) with `DJANGO_APP_BASE_PATH=/proxy/5001/` and `DJANGO_SIGNUPS_ENABLED=true`. Health, login, signup, anonymous API 401, and prefix-aware redirect checks passed.
+- The feature-branch server is running on port 5001 (PID `396507`) with `DJANGO_APP_BASE_PATH=/proxy/5001/` and `DJANGO_SIGNUPS_ENABLED=true`. Health, login, signup, anonymous API 401, and prefix-aware redirect checks passed.
 - After migration, all 46 tests passed; `manage.py check`, `makemigrations --check --dry-run`, and `migrate --check` passed. A transactional smoke check against the migrated active database verified signup, login/logout, profile, billing, owned history, and cross-user 404 behavior; temporary user/session/chat changes rolled back.
+- Follow-up fix: backend auth `Location` values now remain upstream-rooted (`/accounts/login/`, `/`, `/profile/`) so CodeRange adds `/proxy/5001/` once. `APP_BASE_PATH` remains on browser links/forms/assets/API paths; login `next` values already containing the mount are normalized. Regression tests cover signup/login/logout/chat redirects and account navigation with `SCRIPT_NAME=/proxy/5001`.
+- After restarting the `--noreload` worker with the fix, direct upstream checks return `/accounts/login/` (not a mounted path), signup/login HTTP 200, static CSS 200, and anonymous API 401. Full suite: 48 tests pass; system/migration checks pass. The supplied public CodeRange hostname could not be fetched from this environment (transport errors), so external-browser confirmation remains unavailable.
 - Living-documentation tasks are intentionally deferred to the separately invoked `sync docs` phase. The user has not authorized rendezvous or merge.
 
 ## Goal
@@ -171,7 +173,8 @@ The billing balance should have a non-negative database constraint and be stored
 - [x] Add Chat, My Profile, Billing Account, and a CSRF-protected POST Logout control to the existing sidebar; retain New Conversation, history, provider/model selectors, and chat controls.
 - [x] Preserve desktop/mobile layout and current visual tokens; test the account navigation at the existing mobile breakpoint.
 - [x] Update JS to handle session-expired JSON 401 responses with a prefix-safe login navigation.
-- [x] Confirm existing proxy errors, retries, message escaping, CSRF behavior, and `/proxy/5001/` asset/API paths remain intact. CodeRange port 5001 itself was occupied and not restarted; mounted-path behavior is covered by tests.
+- [x] Confirm existing proxy errors, retries, message escaping, CSRF behavior, and `/proxy/5001/` asset/API paths remain intact. The branch now runs on port 5001; mounted-path behavior is covered by tests, while external-browser delivery could not be fetched from this environment.
+- [x] Keep upstream auth redirect targets mount-neutral so CodeRange injects the proxy prefix exactly once; preserve the prefix in browser-generated URLs. Regression tests reproduce `SCRIPT_NAME=/proxy/5001` and assert no duplicated path.
 
 ### F. Documentation
 
