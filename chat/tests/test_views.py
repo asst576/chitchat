@@ -20,6 +20,7 @@ class ChatViewTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(settings.STATIC_URL, "/static/")
+        self.assertContains(response, "Hi, <strong>chat-user</strong>!", html=True)
         self.assertIn('<base href="/">', html)
         self.assertIn('href="static/chat/chat.css"', html)
         self.assertIn('src="static/chat/chat.js"', html)
@@ -30,6 +31,21 @@ class ChatViewTests(TestCase):
         self.assertIn("window.location.assign(new URL(loginUrl, document.baseURI));", javascript)
         self.assertIn("@media (max-width: 760px)", stylesheet)
         self.assertIn(".account-nav { display: flex; grid-column: 1 / -1;", stylesheet)
+
+    def test_sidebar_prefers_non_empty_profile_display_name(self):
+        UserProfile.objects.create(user=self.user, display_name="Chat Friend")
+
+        response = self.client.get("/")
+
+        self.assertContains(response, "Hi, <strong>Chat Friend</strong>!", html=True)
+        self.assertNotContains(response, "Hi, <strong>chat-user</strong>!", html=True)
+
+    def test_blank_profile_display_name_falls_back_to_username(self):
+        UserProfile.objects.create(user=self.user, display_name="")
+
+        response = self.client.get("/")
+
+        self.assertContains(response, "Hi, <strong>chat-user</strong>!", html=True)
 
     @patch.dict(os.environ, {"BUILD_OPENAI_KEY": "test-openai-key"}, clear=True)
     def test_provider_catalog_lists_documented_ids_without_returning_keys(self):
