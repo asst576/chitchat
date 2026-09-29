@@ -3,8 +3,18 @@
 - Plan timestamp: `1790671882`
 - Plan date: 2026-09-29
 - Basis: `doc/study/1790671331_accounts-profile-billing.md`
-- Target branch for future execution: a new feature branch from `main`
-- Current repository state: working LiteChat application on `main`; auth/session middleware already installed; current local database has legacy chats without user owners.
+- Execution branch: `feature/accounts-profile-billing` (resumed from the same commit as `main`; not recreated).
+- Repository state at plan creation: working LiteChat application on `main`; auth/session middleware already installed; current local database has legacy chats without user owners.
+
+## Execution Progress (Resumed 2026-09-29)
+
+- Resumed on `feature/accounts-profile-billing` from the two existing uncommitted changes in `chat/models.py` and `config/settings.py`; retained and extended that work.
+- The local ignored database was inspected read-only: 2 conversations, 6 messages, and 0 users. The message count differs from the earlier study's observation of 4. This is not evidence about the deployed CodeRange database.
+- Rehearsed the staged migration, explicit bootstrap provisioning, owner assignment, and final owner constraint against a copy of the local legacy database. Conversation metadata and all 6 message rows/order matched the source; both chats were assigned to the rehearsal-only superuser. The source database was not migrated or modified.
+- `python manage.py check`, `python manage.py test` (46 tests), and `makemigrations --check --dry-run` pass with the project virtualenv and `DJANGO_DEBUG=true`. Fresh-database migrations pass.
+- This workspace cannot inspect or back up the deployed CodeRange database, select its designated bootstrap username, or verify its ownership mapping. Those migration tasks remain unchecked; do not enable signup or apply the final owner constraint on deployment until the operator's backup/rehearsal gate is complete.
+- Port 5001 is occupied by a pre-existing Django process outside this branch. This process was left untouched. This branch started and served the login page on local port 5002; deployment reachability on port 5001 remains unverified.
+- Living-documentation tasks are intentionally deferred to the separately invoked `sync docs` phase. The user has not authorized rendezvous or merge.
 
 ## Goal
 
@@ -122,41 +132,41 @@ The billing balance should have a non-negative database constraint and be stored
 
 ### B. Authentication
 
-- [ ] Use Django's existing default `auth.User`; do not define or configure a replacement `AUTH_USER_MODEL`.
-- [ ] Implement signup with username, password, password confirmation, existing validators, password hashing, CSRF, duplicate-username handling, and optional display name. Do not add email verification, reset email, social login, or OAuth.
-- [ ] Provision `UserProfile` and `BillingAccount` atomically with user creation; prevent duplicate related records on retries.
-- [ ] Keep self-service signup unavailable until the bootstrap account exists and the legacy owner backfill is complete; then allow all users who can access the private CodeRange route to register.
-- [ ] Implement login and POST logout with Django auth/session APIs and same-origin CSRF protection.
-- [ ] Protect the workspace and all private APIs/pages; retain deliberate public access for signup/login/health/static. Return JSON 401 from APIs and redirect HTML pages appropriately.
-- [ ] Create LiteChat-styled signup/login templates with validation/error states; implement logout as a CSRF-protected POST action.
-- [ ] Keep login, signup, logout, `next` redirects, templates, CSS, JS, and forms compatible with `/proxy/5001/`.
-- [ ] Add and test `DJANGO_APP_BASE_PATH` handling for templates and authentication redirects so `/accounts/...`, `/profile/`, `/billing/`, assets, and API calls remain inside `/proxy/5001/`; retain root behavior when the setting is `/`.
+- [x] Use Django's existing default `auth.User`; do not define or configure a replacement `AUTH_USER_MODEL`.
+- [x] Implement signup with username, password, password confirmation, existing validators, password hashing, CSRF, duplicate-username handling, and optional display name. Do not add email verification, reset email, social login, or OAuth.
+- [x] Provision `UserProfile` and `BillingAccount` atomically with user creation; prevent duplicate related records on retries.
+- [x] Keep self-service signup unavailable until the bootstrap account exists and the legacy owner backfill is complete; then allow all users who can access the private CodeRange route to register. Signup is disabled by default and also checks for a provisioned superuser and zero unowned conversations.
+- [x] Implement login and POST logout with Django auth/session APIs and same-origin CSRF protection.
+- [x] Protect the workspace and all private APIs/pages; retain deliberate public access for signup/login/health/static. Return JSON 401 from APIs and redirect HTML pages appropriately.
+- [x] Create LiteChat-styled signup/login templates with validation/error states; implement logout as a CSRF-protected POST action.
+- [x] Keep login, signup, logout, `next` redirects, templates, CSS, JS, and forms compatible with `/proxy/5001/`.
+- [x] Add and test `DJANGO_APP_BASE_PATH` handling for templates and authentication redirects so `/accounts/...`, `/profile/`, `/billing/`, assets, and API calls remain inside `/proxy/5001/`; retain root behavior when the setting is `/`.
 
 ### C. Models and Ownership Migration
 
-- [ ] Add `UserProfile` one-to-one with the active auth user model; include `display_name` and a per-user `system_prompt` text field with an empty default.
-- [ ] Add one-to-one `BillingAccount` with account name `Personal`, `USD` currency, active/inactive status, `DecimalField` available balance defaulting to `2.00`, and timestamps; add a non-negative balance constraint and no payment fields.
-- [ ] Add a nullable owner FK to `Conversation` first; choose restrictive user-deletion behavior until an explicit account-deletion policy exists.
-- [ ] Provision the bootstrap superuser's profile and `Personal` ACTIVE USD `$2.00` billing account using an explicit idempotent setup step.
-- [ ] Make conversation listing, detail, continuation, and retry owner-scoped; set owner from `request.user` at creation and reject any submitted owner IDs.
-- [ ] Add the explicit legacy-owner management command; require the bootstrap username when unowned rows exist, assign every existing conversation to that account, and preserve all messages and conversation metadata.
-- [ ] Verify legacy row counts/ownership on a database copy, then add a later migration making owner non-null only after the human mapping is complete.
-- [ ] Do not mark migration tasks complete if deployed database backup, owner assignment, or row-integrity verification is unavailable.
+- [x] Add `UserProfile` one-to-one with the active auth user model; include `display_name` and a per-user `system_prompt` text field with an empty default.
+- [x] Add one-to-one `BillingAccount` with account name `Personal`, `USD` currency, active/inactive status, `DecimalField` available balance defaulting to `2.00`, and timestamps; add a non-negative balance constraint and no payment fields.
+- [x] Add a nullable owner FK to `Conversation` first; choose restrictive user-deletion behavior until an explicit account-deletion policy exists. Migration `0003` is nullable; migration `0004` enforces non-null only after a database check.
+- [x] Provision the bootstrap superuser's profile and `Personal` ACTIVE USD `$2.00` billing account using an explicit idempotent setup step. The command was rehearsed on a copy, not run against CodeRange.
+- [x] Make conversation listing, detail, continuation, and retry owner-scoped; set owner from `request.user` at creation and reject any submitted owner IDs.
+- [x] Add the explicit legacy-owner management command; require the bootstrap username when unowned rows exist, assign every existing conversation to that account, and preserve all messages and conversation metadata.
+- [ ] Verify legacy row counts/ownership on a copy of the deployed database, then add/apply the later migration making owner non-null only after the human mapping is complete. The local-database copy rehearsal passed; the deployed-database gate remains open.
+- [x] Do not mark migration tasks complete if deployed database backup, owner assignment, or row-integrity verification is unavailable.
 
 ### D. Profile, Prompt, and Billing Behavior
 
-- [ ] Implement `/profile/` reading only `request.user`; display name, username, user ID, and `date_joined`; allow changes only to display name and that user's system prompt.
-- [ ] Implement `/billing/` by resolving only `request.user.billing_account`; display `[Personal] <display name>`, status, and USD available credit.
-- [ ] Keep billing read-only/display-only: no purchases, cards, payment gateways, subscriptions, invoices, automatic credits, or chat gating based on status/balance.
-- [ ] Load the profile's current system prompt for that user's future proxy requests, including future turns in existing chats, without persisting it as a user/assistant transcript message or rewriting history.
-- [ ] Map the prompt correctly in OpenAI, Anthropic, and Google-compatible request formats and keep it out of all other users' requests and browser-visible configuration.
+- [x] Implement `/profile/` reading only `request.user`; display name, username, user ID, and `date_joined`; allow changes only to display name and that user's system prompt.
+- [x] Implement `/billing/` by resolving only `request.user.billing_account`; display `[Personal] <display name>`, status, and USD available credit.
+- [x] Keep billing read-only/display-only: no purchases, cards, payment gateways, subscriptions, invoices, automatic credits, or chat gating based on status/balance.
+- [x] Load the profile's current system prompt for that user's future proxy requests, including future turns in existing chats, without persisting it as a user/assistant transcript message or rewriting history.
+- [x] Map the prompt correctly in OpenAI, Anthropic, and Google-compatible request formats and keep it out of all other users' requests and browser-visible configuration.
 
 ### E. Navigation and Preservation
 
-- [ ] Add Chat, My Profile, Billing Account, and a CSRF-protected POST Logout control to the existing sidebar; retain New Conversation, history, provider/model selectors, and chat controls.
-- [ ] Preserve desktop/mobile layout and current visual tokens; test the account navigation at the existing mobile breakpoint.
-- [ ] Update JS to handle session-expired JSON 401 responses with a prefix-safe login navigation.
-- [ ] Confirm existing proxy errors, retries, message escaping, CSRF behavior, and `/proxy/5001/` asset/API paths remain intact.
+- [x] Add Chat, My Profile, Billing Account, and a CSRF-protected POST Logout control to the existing sidebar; retain New Conversation, history, provider/model selectors, and chat controls.
+- [x] Preserve desktop/mobile layout and current visual tokens; test the account navigation at the existing mobile breakpoint.
+- [x] Update JS to handle session-expired JSON 401 responses with a prefix-safe login navigation.
+- [x] Confirm existing proxy errors, retries, message escaping, CSRF behavior, and `/proxy/5001/` asset/API paths remain intact. CodeRange port 5001 itself was occupied and not restarted; mounted-path behavior is covered by tests.
 
 ### F. Documentation
 
