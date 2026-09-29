@@ -7,7 +7,7 @@
 
 ## Execution Status
 
-**Partially executed, pending post-fix browser confirmation and deployment configuration.** Django/SQLite chat behavior, the documented non-streaming proxy integrations, tests, living documentation, and live calls through all three proxy interfaces are verified on `feature/litechat-mvp`. Do not merge yet. With explicit user authorization, the prior port-5001 service was stopped and LiteChat now starts on `0.0.0.0:5001`. The user reports the external workspace page loads. Root-absolute asset and API URLs have been fixed to honor `/proxy/5001/`; local requests simulating prefix stripping return successful static/API responses and chat flows. Direct requests from this execution environment to the external URL still fail at the transport layer, so actual browser asset loading after the fix is not independently verified here. CodeRange private access enforcement and SQLite persistence across restarts remain unverified.
+**Rendezvous merged the implementation into `main` at `1fcdcc8`.** Django/SQLite chat behavior, the documented non-streaming proxy integrations, tests, living documentation, and live calls through all three proxy interfaces are verified. With explicit user authorization, the prior port-5001 service was stopped and LiteChat now starts on `0.0.0.0:5001`. The user reports the external workspace page loads. Root-absolute asset and API URLs have been fixed to honor `/proxy/5001/`; local requests simulating prefix stripping return successful static/API responses and chat flows. Direct requests from this execution environment to the external URL still fail at the transport layer, so actual browser asset loading after the fix is not independently verified here. CodeRange private access enforcement and SQLite persistence across restarts remain unverified. The `sync docs` phase has not been run.
 
 ## Execution Notes
 
@@ -217,4 +217,4 @@ Update only living documentation under `doc/wiki/` and `doc/wiki/footguns/` as p
 - Proxy failures, configuration gaps, invalid inputs, and concurrency/retry cases produce safe, understandable outcomes.
 - Mocked-proxy tests, live provider smoke requests, Django checks, and migrations pass. Key flows and prefix-stripped static/API paths pass locally on port `5001`; actual browser asset delivery after the fix still requires confirmation because external fetches from this environment fail at the transport layer.
 - Living documentation accurately reflects the finished code and contains no secrets.
-- The implementation remains on its execution branch until the user explicitly invokes `rendezvous`; this plan phase itself does not create a feature branch or implement application code.
+- The implementation branch was merged into `main` during rendezvous at `1fcdcc8`. Living documentation synchronization remains a separate phase and requires explicit user instruction.
