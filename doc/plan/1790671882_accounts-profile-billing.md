@@ -30,7 +30,7 @@ Treat the current chat application as working functionality. Extend its ownershi
 - Google OAuth, social login, other federated sign-in, and third-party identity providers.
 - Email verification, password reset email, and email-based account recovery.
 - Avatar uploads, profile photos, and user-uploaded files.
-- Roles beyond ordinary users; teams and shared conversations.
+- Custom application roles/permission hierarchies beyond Django's built-in bootstrap superuser; teams and shared conversations.
 - Public/shared conversations.
 - Admin billing dashboards, payment gateways, Stripe, PayPal, card storage, subscriptions, invoices, purchases, automatic credit replenishment, and real financial transactions.
 - Usage metering, charging, credit transaction ledger, or denying chat based on balance/status unless separately approved.
@@ -41,23 +41,21 @@ Treat the current chat application as working functionality. Extend its ownershi
 ## Assumptions
 
 - Use Django's built-in `auth.User`, `UserCreationForm`, password hashing, authentication forms/views, and database-backed sessions. Do not change `AUTH_USER_MODEL` after existing migrations have been applied.
-- Signup is self-service for people who can reach the existing private CodeRange route. The route stays behind private access control; this plan does not make the application public. If public signup is intended, deployment abuse/rate controls require a separate decision.
+- Create one operator-designated bootstrap superuser before enabling self-service signup. The bootstrap user is an explicit legacy-chat owner, not an account promoted automatically because it registered first. Keep the CodeRange route private; signup is available to users who can access that route and does not make the application public.
+- Do not add email verification, email password reset, social login, or OAuth. Signup requires username/password/password confirmation and may collect an optional display name.
 - Use `UserProfile` as a one-to-one extension for `display_name` and `system_prompt`; derive username, account ID, and `date_joined` from the linked user.
 - Create the user, profile, and billing account explicitly in one signup service/transaction. Do not use a signal as the primary provisioning mechanism. Make any repair/backfill operation idempotent with `get_or_create`.
-- Give a new personal billing account the name `Personal` and active status. The initial balance is not settled; see `OPEN QUESTIONS`. Do not create non-zero credit unless explicitly approved.
+- Give each new personal billing account the name `Personal`, USD currency, `ACTIVE` status, and `$2.00` available credit, including the bootstrap account. This is an internal simulated starting grant only.
 - Keep billing display-only. An inactive account or zero balance does not block the existing chat flow unless a later requirement defines billing enforcement.
 - Do not expose account deletion in this MVP. Use restrictive deletion behavior for conversation/billing records until retention and deletion semantics are approved.
 - The user's explicit requirement that the system prompt belong to each authenticated user supersedes the earlier study's possible site-wide setting. There will be no global singleton or staff-only shared prompt in this plan.
-- The CodeRange mount is `/proxy/5001/`. Authentication links, forms, redirects, assets, and JavaScript API calls must continue to resolve under that prefix; the upstream app paths remain rooted at `/` after proxy forwarding.
+- The CodeRange mount is `/proxy/5001/`. `DJANGO_APP_BASE_PATH` will be `/` locally and `/proxy/5001/` in CodeRange; auth links, forms, redirects, assets, and JavaScript API calls must resolve under the configured prefix while upstream app paths remain rooted at `/`.
 
 ## OPEN QUESTIONS
 
-1. **Legacy chat owner:** Which specific username/account should own the two existing local conversations (four messages)? If they should not be assigned, should they remain archived and inaccessible or be exported for later import? Do not run the ownership backfill or enforce a non-null owner until this is answered for the actual deployed database.
-2. **Signup access:** Is self-service signup available to everyone who can reach the private CodeRange route, or should account creation be invite-only/operator-provisioned? Recommended scope is self-service username signup behind the existing private route, not public exposure.
-3. **Initial billing credit and unit:** Should each new personal account start at `$0.00` or receive a simulated grant such as `$2.00`, and is the unit USD or non-cash credits? Recommended safe default is zero balance with no implicit grant; confirm denomination and display precision before migration/seeding.
-4. **System prompt application:** Should a user's current saved prompt apply to new conversations only, or also to future turns in already-existing conversations? Recommended default is to load that user's current prompt on every future assistant request, including continuation, without rewriting stored messages.
+No product decisions remain open based on the user's answers. The migration still has an execution safety gate: inspect/backup the actual deployed database and create the designated bootstrap superuser before assigning legacy conversations. These are explicit implementation tasks; they are not permission to guess an owner or discard data.
 
-Signup visibility is assumed to remain bounded by CodeRange private access; public versus invite-only deployment is not required to implement the account pages under this assumption. If this is not the intended access model, resolve it before deployment.
+The system prompt applies to that user's future AI requests, including future turns in existing conversations, without rewriting historical messages. Billing starts at `$2.00 USD` for each newly provisioned personal account and remains display-only; no purchase or payment action is implied.
 
 ## Architecture
 
@@ -103,51 +101,54 @@ No new runtime dependency is expected. Do not add Django admin solely for these 
 
 The study observed `db.sqlite3` with two conversations, four messages, zero auth users, and no conversation owner column. That is a local ignored database and may differ from the persistent CodeRange database. The actual deployment database must be inspected read-only and backed up before changing it.
 
-1. Confirm the legacy owner in `OPEN QUESTIONS`. Do not infer it from the first signup, default a user ID, delete the conversations, or expose ownerless conversations to all users.
-2. Add `UserProfile` and `BillingAccount` with one-to-one relations to `settings.AUTH_USER_MODEL`. Create both explicitly during signup inside `transaction.atomic()`. Add a profile/account repair path using `get_or_create` for the explicitly chosen legacy user.
+1. Use the designated bootstrap superuser as owner of all existing unowned conversations, as explicitly directed. Do not infer ownership from the first self-service signup, delete conversations, or expose ownerless rows to users.
+2. Add `UserProfile` and `BillingAccount` with one-to-one relations to `settings.AUTH_USER_MODEL`. Create both explicitly during signup inside `transaction.atomic()`. After those tables are migrated, provision the bootstrap superuser's profile and account with an idempotent `get_or_create` service.
 3. Add a nullable `Conversation.owner` FK in an initial schema migration with a swappable auth dependency. Deploy code that only lists/opens/continues owned conversations while the field is nullable; ownerless rows remain hidden from ordinary users.
-4. After the named legacy account exists, run a management command such as `assign_legacy_conversation_owner --username <confirmed-name>`. Require explicit input when unowned rows exist, report counts without showing message contents, run transactionally, and be idempotent. Preserve conversation UUIDs, messages, ordering, timestamps, and provider/model attribution.
-5. Verify counts and ownership on a database copy. Only after all retained conversations have an explicitly assigned owner should a later migration change the FK to non-null.
-6. If human input selects archival instead of assignment, export/retain the rows with a documented access/restore policy and keep them inaccessible to all ordinary accounts; do not silently discard them.
-7. Apply migrations to an actual backup/rehearsal of the CodeRange database. SQLite schema changes can rebuild/copy tables, so verify available disk space, backup restoration, row counts, migration rollback limitations, and chat behavior before production rollout.
+4. After the bootstrap account exists, run `assign_legacy_conversation_owner --username <bootstrap-admin>`. Require that explicit username when unowned rows exist, report counts without showing message contents, run transactionally, and make the command idempotent. Preserve conversation UUIDs, messages, ordering, timestamps, and provider/model attribution.
+5. Verify counts and ownership on a database copy. Confirm every retained conversation is owned by the bootstrap account and all messages remain attached in their original order.
+6. Only after the backfill has been verified should a later migration change the owner FK to non-null. Ensure the application assigns an owner to every new conversation throughout the nullable transition.
+7. Apply the staged migrations and command to a rehearsal copy of the actual CodeRange database. SQLite schema changes can rebuild/copy tables, so verify available disk space, backup restoration, row counts, migration rollback limitations, and chat behavior before production rollout.
 
-The billing balance should have a non-negative database constraint. Seed value depends on `OPEN QUESTIONS`; recommended initial default is zero and no automatic grant. Do not include payment methods, purchase flows, or a financial ledger.
+The billing balance should have a non-negative database constraint and be stored as USD with two decimal places. Provision each new billing account, including the bootstrap account, with `$2.00`; this is simulated internal credit only. Do not include payment methods, purchase flows, or a financial ledger.
 
 ## Task Board
 
 ### A. Decisions and Preflight
 
-- [ ] Resolve the legacy conversation owner and billing unit/initial balance questions before applying the owner backfill or billing seed.
-- [ ] Confirm signup access policy (self-service behind the private route versus invitation/operator provisioning) and choose whether the optional display name appears on signup.
-- [ ] Confirm the per-user system prompt applies to future turns in existing conversations or only newly created conversations.
-- [ ] Record the actual deployed database path, backup procedure, conversation/message counts, auth-user count, and restoration test without reading message contents.
+- [ ] Inspect the actual deployed SQLite database read-only; record table/row counts without inspecting message contents.
+- [ ] Back up the deployed database and rehearse restoring the backup before any ownership migration.
+- [ ] Create the operator-designated bootstrap superuser with Django's `createsuperuser` before enabling self-service signup; never promote the first self-registered user automatically.
+- [ ] Use that bootstrap superuser as owner of every existing unowned conversation, as directed; record the chosen username for the backfill command.
 
 ### B. Authentication
 
 - [ ] Use Django's existing default `auth.User`; do not define or configure a replacement `AUTH_USER_MODEL`.
-- [ ] Implement signup with username, password, password confirmation, existing validators, password hashing, CSRF, duplicate-username handling, and optional display name.
+- [ ] Implement signup with username, password, password confirmation, existing validators, password hashing, CSRF, duplicate-username handling, and optional display name. Do not add email verification, reset email, social login, or OAuth.
 - [ ] Provision `UserProfile` and `BillingAccount` atomically with user creation; prevent duplicate related records on retries.
+- [ ] Keep self-service signup unavailable until the bootstrap account exists and the legacy owner backfill is complete; then allow all users who can access the private CodeRange route to register.
 - [ ] Implement login and POST logout with Django auth/session APIs and same-origin CSRF protection.
 - [ ] Protect the workspace and all private APIs/pages; retain deliberate public access for signup/login/health/static. Return JSON 401 from APIs and redirect HTML pages appropriately.
+- [ ] Create LiteChat-styled signup/login templates with validation/error states; implement logout as a CSRF-protected POST action.
 - [ ] Keep login, signup, logout, `next` redirects, templates, CSS, JS, and forms compatible with `/proxy/5001/`.
 - [ ] Add and test `DJANGO_APP_BASE_PATH` handling for templates and authentication redirects so `/accounts/...`, `/profile/`, `/billing/`, assets, and API calls remain inside `/proxy/5001/`; retain root behavior when the setting is `/`.
 
 ### C. Models and Ownership Migration
 
 - [ ] Add `UserProfile` one-to-one with the active auth user model; include `display_name` and a per-user `system_prompt` text field with an empty default.
-- [ ] Add one-to-one `BillingAccount` with `account_name`, active/inactive status, available balance, and timestamps; add non-negative balance constraint and no payment fields.
+- [ ] Add one-to-one `BillingAccount` with account name `Personal`, `USD` currency, active/inactive status, `DecimalField` available balance defaulting to `2.00`, and timestamps; add a non-negative balance constraint and no payment fields.
 - [ ] Add a nullable owner FK to `Conversation` first; choose restrictive user-deletion behavior until an explicit account-deletion policy exists.
+- [ ] Provision the bootstrap superuser's profile and `Personal` ACTIVE USD `$2.00` billing account using an explicit idempotent setup step.
 - [ ] Make conversation listing, detail, continuation, and retry owner-scoped; set owner from `request.user` at creation and reject any submitted owner IDs.
-- [ ] Add the explicit legacy-owner management command; abort when rows exist without a specified user; preserve all messages and conversation metadata.
+- [ ] Add the explicit legacy-owner management command; require the bootstrap username when unowned rows exist, assign every existing conversation to that account, and preserve all messages and conversation metadata.
 - [ ] Verify legacy row counts/ownership on a database copy, then add a later migration making owner non-null only after the human mapping is complete.
 - [ ] Do not mark migration tasks complete if deployed database backup, owner assignment, or row-integrity verification is unavailable.
 
 ### D. Profile, Prompt, and Billing Behavior
 
 - [ ] Implement `/profile/` reading only `request.user`; display name, username, user ID, and `date_joined`; allow changes only to display name and that user's system prompt.
-- [ ] Implement `/billing/` by resolving only `request.user.billing_account`; display personal account name, status, and available credit.
-- [ ] Keep billing read-only/display-only: no purchases, cards, payment gateways, automatic credits, or chat gating based on status/balance.
-- [ ] Load the profile's current system prompt for that user's future proxy requests without persisting it as a user/assistant transcript message.
+- [ ] Implement `/billing/` by resolving only `request.user.billing_account`; display `[Personal] <display name>`, status, and USD available credit.
+- [ ] Keep billing read-only/display-only: no purchases, cards, payment gateways, subscriptions, invoices, automatic credits, or chat gating based on status/balance.
+- [ ] Load the profile's current system prompt for that user's future proxy requests, including future turns in existing chats, without persisting it as a user/assistant transcript message or rewriting history.
 - [ ] Map the prompt correctly in OpenAI, Anthropic, and Google-compatible request formats and keep it out of all other users' requests and browser-visible configuration.
 
 ### E. Navigation and Preservation
@@ -163,20 +164,20 @@ The billing balance should have a non-negative database constraint. Seed value d
 - [ ] Document per-user conversation ownership and 404 behavior for cross-user IDs.
 - [ ] Document profile fields and that user ID/member-since are read-only.
 - [ ] Document the simulated billing model, chosen unit/seed, absence of real payments, and whether balance affects chat.
-- [ ] Document legacy data mapping/backup/restore procedure and any ownerless archived data.
+- [ ] Document legacy data mapping to the bootstrap superuser and the backup/restore procedure.
 - [ ] Document per-user system prompt storage, provider-specific handling, and access restrictions if included.
 - [ ] Reconcile known limitations and CodeRange subpath setup with tested implementation; never describe unverified flows as working.
 
 ## Testing
 
-- Signup: successful creation, duplicate username, password mismatch/weak password, password hashing, optional display name, atomic profile/account creation, and idempotent related-record provisioning.
+- Signup: successful creation, duplicate username, password mismatch/weak password, password hashing, optional display name, atomic profile/account creation, bootstrap superuser setup, and idempotent related-record provisioning.
 - Login/logout: valid/invalid credentials, database session, POST logout with CSRF, session flush, private page denied after logout, safe `next` redirect handling.
 - Protection: anonymous access to workspace/profile/billing and all chat APIs; intended public signup/login/health/static routes; JSON 401 contract.
 - Ownership: create sets current user; history scoped to current user; detail/continue/retry foreign UUID denied with same 404 as unknown IDs; forged owner fields ignored/rejected.
 - Profile: own page shows display name/username/user ID/member-since; display-name and prompt update persist; a client cannot update another user's profile, username ownership, member date, or staff flags.
 - Global system prompt: persists across requests/reloads, applies only to owning user's generation, does not alter stored transcript, is not exposed to another user, and maps correctly to OpenAI/Anthropic/Google request schemas.
-- Billing: account created once per user, name/status/balance display, chosen zero or approved initial balance, no negative balance, no cross-user reads/updates, and no purchase or payment side effects.
-- Legacy migration: empty DB path; copied legacy DB path; explicit owner assignment; missing owner argument abort; exact counts and message ordering retained; foreign users cannot see historical chats after migration.
+- Billing: account created once per user, `Personal`/`ACTIVE`/`USD`/`$2.00` display, no negative balance, no cross-user reads/updates, and no purchase or payment side effects.
+- Legacy migration: empty DB path; copied legacy DB path; every existing conversation assigned to the bootstrap superuser; missing owner argument aborts; exact counts and message ordering retained; foreign users cannot see historical chats after migration.
 - Existing chat regression: provider/model catalog, CSRF, prompt submission, successful response, multi-turn context, history reopen, retry without prompt duplication, safe proxy failures, text escaping, and subpath static/API URL resolution for authenticated users.
 
 ## Validation
@@ -189,7 +190,7 @@ The billing balance should have a non-negative database constraint. Seed value d
 - Profile system prompt remains per-user and is mapped correctly per provider without leaking to another user or the frontend.
 - Browser assets and APIs resolve below `/proxy/5001/`; auth redirects, login `next`, and logout remain usable through CodeRange.
 - With `DJANGO_APP_BASE_PATH=/`, local routes and asset behavior remain compatible with existing development setup.
-- Billing remains simulation-only and has no card/payment/purchase behavior; selected unit and initial balance match the approved decision.
+- Billing remains simulation-only with USD `$2.00` starting balance and ACTIVE status; there is no card/payment/purchase behavior or balance-based chat gate.
 - No credentials or password data appear in templates, JavaScript, responses, logs, or Git-tracked configuration.
 
 ## Documentation Updates
@@ -202,6 +203,6 @@ After implementation and verification, update only living docs under `doc/wiki/`
 - All chat list/detail/create/continue/retry paths filter by the authenticated owner and reject cross-user IDs.
 - The user's profile system prompt persists and is applied only to that user's future provider requests with correct provider-specific mapping.
 - Billing is a one-to-one internal display model only; no real payment, automatic purchase, or unapproved credit grant exists.
-- The legacy conversation owner decision is explicit, migration is rehearsed from a backup, and all existing chat/message rows are preserved or deliberately archived according to the user's answer.
+- All existing conversations are assigned to the bootstrap superuser as directed; migration is rehearsed from a backup and preserves every chat/message row and its ordering.
 - Existing provider/model selection, proxy behavior, conversation context/history, responsive LiteChat UI, CSRF, and CodeRange `/proxy/5001/` compatibility continue to work.
 - Tests/checks pass, documentation describes only verified behavior, and no secret is committed or exposed.
