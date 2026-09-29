@@ -9,11 +9,14 @@
 ## Execution Progress (Resumed 2026-09-29)
 
 - Resumed on `feature/accounts-profile-billing` from the two existing uncommitted changes in `chat/models.py` and `config/settings.py`; retained and extended that work.
-- The local ignored database was inspected read-only: 2 conversations, 6 messages, and 0 users. The message count differs from the earlier study's observation of 4. This is not evidence about the deployed CodeRange database.
+- The local ignored database was initially treated as separate from deployment: 2 conversations, 6 messages, and 0 users (the message count differs from the earlier study's observation of 4). Follow-up inspection established that the active port-5001 process uses this same database; details and safe-copy verification follow.
 - Rehearsed the staged migration, explicit bootstrap provisioning, owner assignment, and final owner constraint against a copy of the local legacy database. Conversation metadata and all 6 message rows/order matched the source; both chats were assigned to the rehearsal-only superuser. The source database was not migrated or modified.
 - `python manage.py check`, `python manage.py test` (46 tests), and `makemigrations --check --dry-run` pass with the project virtualenv and `DJANGO_DEBUG=true`. Fresh-database migrations pass.
-- This workspace cannot inspect or back up the deployed CodeRange database, select its designated bootstrap username, or verify its ownership mapping. Those migration tasks remain unchecked; do not enable signup or apply the final owner constraint on deployment until the operator's backup/rehearsal gate is complete.
-- Port 5001 is occupied by a pre-existing Django process outside this branch. This process was left untouched. This branch started and served the login page on local port 5002; deployment reachability on port 5001 remains unverified.
+- Follow-up identified the active port-5001 process as using this workspace and the default `db.sqlite3` (no `DJANGO_SQLITE_PATH` override). Read-only verification found 2 conversations, 6 messages, 0 users, 0 orphan messages, and no owner column; SQLite integrity and foreign-key checks pass.
+- Created a consistent SQLite online backup at `/tmp/opencode/accounts-profile-deployed-snapshot-1790674670.sqlite3` and a restore-check copy at `/tmp/opencode/accounts-profile-deployed-restore-check-1790674670.sqlite3`. Both passed integrity/FK checks and matched the source's conversation metadata and message metadata/order. No message contents were inspected, and the source database was not changed.
+- Rehearsed migrations `0003` and `0004`, profile/billing provisioning, and explicit owner assignment on a separate copy of that backup using `rehearsal-only-admin`. Both legacy conversations were assigned there, zero ownerless rows remained, and all conversation/message metadata/order matched the backup. This test identity was not created or used in the active database.
+- The first/admin user has not yet been created in the active database. Its username must be explicitly selected before provisioning/backfill; do not guess it or use the rehearsal-only user. Keep signup disabled.
+- The port-5001 process is an existing `runserver --noreload` started before this feature code was active and still serves the pre-auth workspace. Do not migrate while it can continue creating ownerless chats; coordinate its replacement with the feature code before schema changes. This branch was separately started and served the login page on local port 5002.
 - Living-documentation tasks are intentionally deferred to the separately invoked `sync docs` phase. The user has not authorized rendezvous or merge.
 
 ## Goal
@@ -125,10 +128,10 @@ The billing balance should have a non-negative database constraint and be stored
 
 ### A. Decisions and Preflight
 
-- [ ] Inspect the actual deployed SQLite database read-only; record table/row counts without inspecting message contents.
-- [ ] Back up the deployed database and rehearse restoring the backup before any ownership migration.
-- [ ] Create the operator-designated bootstrap superuser with Django's `createsuperuser` before enabling self-service signup; never promote the first self-registered user automatically.
-- [ ] Use that bootstrap superuser as owner of every existing unowned conversation, as directed; record the chosen username for the backfill command.
+- [x] Inspect the actual deployed SQLite database read-only; record table/row counts without inspecting message contents. Verified 2 conversations, 6 messages, 0 users, and 0 orphan messages.
+- [x] Back up the deployed database and rehearse restoring the backup before any ownership migration. Verified the SQLite online backup and a separate restore-check copy at the paths recorded above.
+- [ ] Create the operator-designated bootstrap superuser with Django's `createsuperuser` before enabling self-service signup; never promote the first self-registered user automatically. The active database currently has 0 users; waiting for the user-created account and username.
+- [ ] Use that bootstrap superuser as owner of every existing unowned conversation, as directed; record the chosen username for the backfill command. A full rehearsal passed on a separate copy with a rehearsal-only user; active database unchanged.
 
 ### B. Authentication
 
@@ -150,7 +153,7 @@ The billing balance should have a non-negative database constraint and be stored
 - [x] Provision the bootstrap superuser's profile and `Personal` ACTIVE USD `$2.00` billing account using an explicit idempotent setup step. The command was rehearsed on a copy, not run against CodeRange.
 - [x] Make conversation listing, detail, continuation, and retry owner-scoped; set owner from `request.user` at creation and reject any submitted owner IDs.
 - [x] Add the explicit legacy-owner management command; require the bootstrap username when unowned rows exist, assign every existing conversation to that account, and preserve all messages and conversation metadata.
-- [ ] Verify legacy row counts/ownership on a copy of the deployed database, then add/apply the later migration making owner non-null only after the human mapping is complete. The local-database copy rehearsal passed; the deployed-database gate remains open.
+- [ ] Verify legacy row counts/ownership on a copy of the deployed database, then add/apply the later migration making owner non-null only after the human mapping is complete. The actual backup copy passed a full staged rehearsal with a test-only owner; assignment to the selected active admin and the production migration remain pending.
 - [x] Do not mark migration tasks complete if deployed database backup, owner assignment, or row-integrity verification is unavailable.
 
 ### D. Profile, Prompt, and Billing Behavior
