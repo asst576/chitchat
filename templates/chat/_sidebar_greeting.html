@@ -1,0 +1,3 @@
+{% if request.user.is_authenticated %}
+  <p class="sidebar-greeting">Hi, <strong>{{ request.user.profile.display_name|default:request.user.get_username }}</strong>!</p>
+{% endif %}

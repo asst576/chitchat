@@ -8,13 +8,15 @@
   <base href="{{ app_base_path }}">
   <link rel="stylesheet" href="static/chat/chat.css">
 </head>
-<body>
-  <div class="app-shell">
-    <aside class="sidebar" aria-label="Conversation history">
+<body class="chat-page">
+  <div class="app-shell chat-app">
+    <aside class="sidebar chat-sidebar" aria-label="Conversation history">
       <a class="wordmark" href="./" aria-label="ChitChat home">
         <span class="wordmark-mark" aria-hidden="true">C</span>
         <span>ChitChat<span class="wordmark-period">.</span></span>
       </a>
+
+      {% include "chat/_sidebar_greeting.html" %}
 
       <button class="new-chat-button" id="new-chat" type="button">
         <span aria-hidden="true">+</span>
@@ -38,7 +40,7 @@
       </div>
     </aside>
 
-    <main class="workspace">
+    <main class="workspace chat-workspace">
       <header class="topbar">
         <div class="topbar-context">
           <span class="eyebrow">MODEL INTERFACE</span>

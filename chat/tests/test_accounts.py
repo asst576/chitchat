@@ -350,6 +350,8 @@ class AccountViewTests(TestCase):
         self.assertEqual(chat_page.status_code, 200)
         chat_html = chat_page.content.decode()
         self.assertIn("Hi, <strong>Updated Member</strong>!", chat_html)
+        self.assertIn('class="app-shell chat-app"', chat_html)
+        self.assertIn('class="workspace chat-workspace"', chat_html)
         self.assertIn('<base href="/proxy/5001/">', chat_html)
         self.assertIn('href="static/chat/chat.css"', chat_html)
         self.assertIn('href="/proxy/5001/"', chat_html)

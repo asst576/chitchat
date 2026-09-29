@@ -23,6 +23,9 @@ class ChatViewTests(TestCase):
         self.assertContains(response, "ChitChat")
         self.assertNotContains(response, "LiteChat")
         self.assertContains(response, "Hi, <strong>chat-user</strong>!", html=True)
+        self.assertIn('<body class="chat-page">', html)
+        self.assertIn('<div class="app-shell chat-app">', html)
+        self.assertIn('<main class="workspace chat-workspace">', html)
         self.assertIn('<base href="/">', html)
         self.assertIn('href="static/chat/chat.css"', html)
         self.assertIn('src="static/chat/chat.js"', html)
@@ -33,8 +36,27 @@ class ChatViewTests(TestCase):
         self.assertIn('message.role === "assistant" ? "ChitChat" : "You"', javascript)
         self.assertIn("window.location.assign(new URL(loginUrl, document.baseURI));", javascript)
         self.assertIn('message.role === "assistant" ? "C" : "Y"', javascript)
+        self.assertIn("body.chat-page { height: 100vh; height: 100dvh; overflow: hidden; }", stylesheet)
+        self.assertIn(".chat-app { height: 100vh; height: 100dvh;", stylesheet)
+        self.assertIn(".chat-sidebar { height: 100vh; height: 100dvh;", stylesheet)
+        self.assertIn(".chat-workspace { height: 100vh; height: 100dvh; min-height: 0; overflow: hidden; }", stylesheet)
+        self.assertIn(".chat-workspace .topbar, .chat-workspace .status-line { flex: 0 0 auto; }", stylesheet)
+        self.assertIn(".chat-workspace .conversation-area { flex: 1 1 auto; min-height: 0; overflow-x: hidden; overflow-y: auto;", stylesheet)
+        self.assertIn(".chat-workspace .message-list { padding-bottom: 72px; }", stylesheet)
+        self.assertIn(".chat-workspace .composer-wrap { flex: 0 0 auto; }", stylesheet)
+        self.assertIn("overflow-wrap: anywhere;", stylesheet)
+        self.assertIn(".chat-app { grid-template-rows: auto minmax(0, 1fr); }", stylesheet)
+        self.assertIn("max-width: 44vw;", stylesheet)
         self.assertIn("@media (max-width: 760px)", stylesheet)
         self.assertIn(".account-nav { display: flex; grid-column: 1 / -1;", stylesheet)
+        order = [
+            html.index('class="wordmark"'),
+            html.index("Hi, <strong>chat-user</strong>!"),
+            html.index('id="new-chat"'),
+            html.index('aria-label="Account navigation"'),
+            html.index("RECENT"),
+        ]
+        self.assertEqual(order, sorted(order))
 
     def test_sidebar_prefers_non_empty_profile_display_name(self):
         UserProfile.objects.create(user=self.user, display_name="Chat Friend")

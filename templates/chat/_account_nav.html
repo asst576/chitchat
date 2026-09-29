@@ -1,7 +1,4 @@
 <nav class="account-nav" aria-label="Account navigation">
-  {% if request.user.is_authenticated %}
-    <p class="sidebar-greeting">Hi, <strong>{{ request.user.profile.display_name|default:request.user.get_username }}</strong>!</p>
-  {% endif %}
   <a href="{{ app_base_path }}"{% if current_page == "chat" %} aria-current="page"{% endif %}>Chat</a>
   <a href="{{ app_base_path }}profile/"{% if current_page == "profile" %} aria-current="page"{% endif %}>My Profile</a>
   <a href="{{ app_base_path }}billing/"{% if current_page == "billing" %} aria-current="page"{% endif %}>Billing Account</a>

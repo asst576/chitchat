@@ -24,6 +24,8 @@ body {
   background: var(--paper);
 }
 
+body.chat-page { height: 100vh; height: 100dvh; overflow: hidden; }
+
 button, select, textarea { font: inherit; }
 button { cursor: pointer; }
 
@@ -32,6 +34,8 @@ button { cursor: pointer; }
   grid-template-columns: 274px minmax(0, 1fr);
   min-height: 100vh;
 }
+
+.chat-app { height: 100vh; height: 100dvh; min-height: 0; overflow: hidden; }
 
 .sidebar {
   display: flex;
@@ -42,12 +46,15 @@ button { cursor: pointer; }
   background: var(--forest);
 }
 
+.chat-sidebar { height: 100vh; height: 100dvh; min-height: 0; overflow: hidden; }
+.chat-sidebar .history-nav { flex: 1 1 auto; min-height: 0; }
+
 .wordmark {
   display: flex;
   align-items: center;
   gap: 11px;
   width: fit-content;
-  margin: 0 0 39px 4px;
+  margin: 0 0 14px 4px;
   color: inherit;
   font-family: "Avenir Next", Avenir, "Segoe UI", sans-serif;
   font-size: 20px;
@@ -146,7 +153,7 @@ button { cursor: pointer; }
 }
 
 .account-nav { display: grid; gap: 4px; margin: 0 0 14px; }
-.sidebar-greeting { margin: 0 7px 5px; color: #b5c8c0; font-size: 10px; line-height: 1.35; overflow-wrap: anywhere; }
+.sidebar-greeting { margin: 0 7px 14px; color: #b5c8c0; font-size: 12px; line-height: 1.35; overflow-wrap: anywhere; }
 .sidebar-greeting strong { color: #f2f7f4; font-weight: 600; }
 .account-nav a, .account-nav button { display: block; width: 100%; padding: 9px 11px; border: 0; border-radius: 7px; color: #d9e5df; background: transparent; font-size: 12px; text-align: left; text-decoration: none; }
 .account-nav a:hover, .account-nav button:hover, .account-nav a[aria-current="page"] { color: #fff; background: rgb(255 255 255 / 10%); }
@@ -163,6 +170,12 @@ button { cursor: pointer; }
     radial-gradient(ellipse at 67% 10%, rgb(226 238 234 / 70%), transparent 39%),
     var(--paper);
 }
+
+.chat-workspace { height: 100vh; height: 100dvh; min-height: 0; overflow: hidden; }
+.chat-workspace .topbar, .chat-workspace .status-line { flex: 0 0 auto; }
+.chat-workspace .composer-wrap { flex: 0 0 auto; }
+.chat-workspace .conversation-area { flex: 1 1 auto; min-height: 0; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; }
+.chat-workspace .message-list { padding-bottom: 72px; }
 
 .topbar {
   display: flex;
@@ -306,9 +319,11 @@ button { cursor: pointer; }
   .wordmark { margin: 0; font-size: 17px; }
   .wordmark-mark { width: 28px; height: 28px; }
   .sidebar { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 10px; }
-  .new-chat-button { width: auto; min-height: 38px; padding: 0 11px; font-size: 11px; }
+  .chat-app { grid-template-rows: auto minmax(0, 1fr); }
+  .chat-sidebar { height: auto; }
+  .new-chat-button { grid-column: 1 / -1; width: 100%; min-height: 38px; padding: 0 11px; font-size: 11px; }
+  .sidebar-greeting { max-width: 44vw; margin: 0; font-size: 10px; text-align: right; }
   .account-nav { display: flex; grid-column: 1 / -1; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px; margin: 0; }
-  .sidebar-greeting { flex: 0 0 100%; margin: 0 7px 3px; }
   .account-nav a, .account-nav button { width: auto; padding: 7px 8px; font-size: 10px; }
   .account-nav form { margin-left: auto; }
   .history-heading { display: flex; grid-column: 1 / -1; margin: 3px 2px 0; }
@@ -318,6 +333,7 @@ button { cursor: pointer; }
   .history-empty { margin: 4px 2px 9px; }
   .sidebar-bottom { display: none; }
   .workspace { min-height: calc(100vh - 62px); }
+  .chat-workspace { height: auto; min-height: 0; }
   .topbar { align-items: flex-start; flex-direction: column; gap: 13px; min-height: auto; padding: 17px 18px; }
   .topbar-title { font-size: 11px; }
   .model-controls { width: 100%; }
@@ -328,7 +344,7 @@ button { cursor: pointer; }
   .welcome-card { margin: 8vh auto; }
   .welcome-card h1 { font-size: 37px; }
   .message-content { max-width: calc(100% - 42px); }
-  .composer-wrap { width: calc(100% - 28px); padding-bottom: 12px; }
+  .composer-wrap { width: calc(100% - 28px); padding-bottom: max(12px, env(safe-area-inset-bottom)); }
   .composer-hint { font-size: 8px; }
   .proxy-disclosure { font-size: 8px; }
   .account-content { width: calc(100% - 28px); padding: 24px 0 35px; }
