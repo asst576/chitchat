@@ -21,6 +21,7 @@
 - After migration, all 46 tests passed; `manage.py check`, `makemigrations --check --dry-run`, and `migrate --check` passed. A transactional smoke check against the migrated active database verified signup, login/logout, profile, billing, owned history, and cross-user 404 behavior; temporary user/session/chat changes rolled back.
 - Follow-up fix: backend auth `Location` values now remain upstream-rooted (`/accounts/login/`, `/`, `/profile/`) so CodeRange adds `/proxy/5001/` once. `APP_BASE_PATH` remains on browser links/forms/assets/API paths; login `next` values already containing the mount are normalized. Regression tests cover signup/login/logout/chat redirects and account navigation with `SCRIPT_NAME=/proxy/5001`.
 - After restarting the `--noreload` worker with the fix, direct upstream checks return `/accounts/login/` (not a mounted path), signup/login HTTP 200, static CSS 200, and anonymous API 401. Full suite: 48 tests pass; system/migration checks pass. The supplied public CodeRange hostname could not be fetched from this environment (transport errors), so external-browser confirmation remains unavailable.
+- Added an authenticated-only sidebar greeting using the current user's non-empty profile display name or username fallback. Mounted-path tests cover missing/blank profile values and named values; all 50 tests and checks pass. The port-5001 `--noreload` worker was restarted to load the template/CSS update.
 - Living-documentation tasks are intentionally deferred to the separately invoked `sync docs` phase. The user has not authorized rendezvous or merge.
 
 ## Goal
@@ -175,6 +176,7 @@ The billing balance should have a non-negative database constraint and be stored
 - [x] Update JS to handle session-expired JSON 401 responses with a prefix-safe login navigation.
 - [x] Confirm existing proxy errors, retries, message escaping, CSRF behavior, and `/proxy/5001/` asset/API paths remain intact. The branch now runs on port 5001; mounted-path behavior is covered by tests, while external-browser delivery could not be fetched from this environment.
 - [x] Keep upstream auth redirect targets mount-neutral so CodeRange injects the proxy prefix exactly once; preserve the prefix in browser-generated URLs. Regression tests reproduce `SCRIPT_NAME=/proxy/5001` and assert no duplicated path.
+- [x] Display an authenticated-user sidebar greeting, preferring a non-empty profile display name and otherwise the username, without altering the existing chat/account navigation or mount behavior.
 
 ### F. Documentation
 
