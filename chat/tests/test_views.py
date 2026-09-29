@@ -3,23 +3,33 @@ import os
 from unittest.mock import patch
 
 from django.conf import settings
+from django.contrib.auth import get_user_model
 from django.test import Client, TestCase
 
-from chat.models import Conversation, Message
+from chat.models import Conversation, Message, UserProfile
 
 
 class ChatViewTests(TestCase):
+    def setUp(self):
+        self.user = get_user_model().objects.create_user(username="chat-user", password="StrongPassword123!")
+        self.client.force_login(self.user)
+
     def test_workspace_asset_urls_are_relative_to_the_proxy_mount(self):
         response = self.client.get("/")
         html = response.content.decode()
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(settings.STATIC_URL, "/static/")
-        self.assertIn('<base href="./">', html)
+        self.assertIn('<base href="/">', html)
         self.assertIn('href="static/chat/chat.css"', html)
         self.assertIn('src="static/chat/chat.js"', html)
+        self.assertIn('action="/accounts/logout/"', html)
         javascript = (settings.BASE_DIR / "static" / "chat" / "chat.js").read_text(encoding="utf-8")
+        stylesheet = (settings.BASE_DIR / "static" / "chat" / "chat.css").read_text(encoding="utf-8")
         self.assertIn('new URL("api", document.baseURI)', javascript)
+        self.assertIn("window.location.assign(new URL(loginUrl, document.baseURI));", javascript)
+        self.assertIn("@media (max-width: 760px)", stylesheet)
+        self.assertIn(".account-nav { display: flex; grid-column: 1 / -1;", stylesheet)
 
     @patch.dict(os.environ, {"BUILD_OPENAI_KEY": "test-openai-key"}, clear=True)
     def test_provider_catalog_lists_documented_ids_without_returning_keys(self):
@@ -79,6 +89,7 @@ class ChatViewTests(TestCase):
             ],
         )
         conversation = Conversation.objects.get(pk=conversation_id)
+        self.assertEqual(conversation.owner, self.user)
         self.assertEqual(conversation.provider, "anthropic")
         latest_assistant = conversation.messages.filter(role=Message.Role.ASSISTANT).order_by("-created_at").first()
         self.assertEqual(latest_assistant.provider, "anthropic")
@@ -123,6 +134,7 @@ class ChatViewTests(TestCase):
     @patch("chat.services.conversations.ProxyClient.generate", return_value="Answer")
     def test_post_requires_csrf_token(self, generate):
         client = Client(enforce_csrf_checks=True)
+        client.force_login(self.user)
         page = client.get("/")
         token = client.cookies["csrftoken"].value
         body = json.dumps(
@@ -162,3 +174,108 @@ class ChatViewTests(TestCase):
         self.assertEqual(Message.objects.get(role=Message.Role.USER).content, "Preserve this")
         self.assertNotIn("BUILD_OPENAI_KEY", response.content.decode())
         urlopen.assert_not_called()
+
+    def test_anonymous_workspace_and_api_access_are_protected(self):
+        client = Client()
+
+        page = client.get("/")
+        provider_response = client.get("/api/providers/")
+        response = client.get("/api/conversations/")
+        write_response = client.post(
+            "/api/messages/",
+            data=json.dumps({"prompt": "blocked"}),
+            content_type="application/json",
+        )
+
+        self.assertEqual(page.status_code, 302)
+        self.assertTrue(page["Location"].startswith("/accounts/login/?next="))
+        for api_response in (provider_response, response, write_response):
+            self.assertEqual(api_response.status_code, 401)
+            self.assertEqual(api_response.json()["error"]["code"], "authentication_required")
+        self.assertEqual(client.get("/profile/").status_code, 302)
+        self.assertEqual(client.get("/billing/").status_code, 302)
+
+    def test_system_prompt_is_not_in_chat_page_or_provider_catalog(self):
+        secret_prompt = "This account-only instruction must not reach the browser."
+        UserProfile.objects.create(user=self.user, system_prompt=secret_prompt)
+
+        page = self.client.get("/")
+        catalog = self.client.get("/api/providers/")
+
+        self.assertNotContains(page, secret_prompt)
+        self.assertNotContains(catalog, secret_prompt)
+
+    @patch("chat.services.conversations.ProxyClient.generate", return_value="Private answer")
+    def test_history_and_conversation_apis_are_owner_scoped(self, generate):
+        created = self.client.post(
+            "/api/messages/",
+            data=json.dumps(
+                {
+                    "prompt": "My thread",
+                    "provider_id": "openai",
+                    "model_id": "gpt-5.6-luna",
+                    "owner_id": 99999,
+                }
+            ),
+            content_type="application/json",
+        )
+        conversation_id = created.json()["conversation"]["id"]
+        other = get_user_model().objects.create_user(username="other-viewer", password="StrongPassword123!")
+        other_client = Client()
+        other_client.force_login(other)
+
+        history = other_client.get("/api/conversations/")
+        foreign_detail = other_client.get(f"/api/conversations/{conversation_id}/")
+        unknown_detail = other_client.get("/api/conversations/00000000-0000-0000-0000-000000000001/")
+        foreign_continue = other_client.post(
+            f"/api/conversations/{conversation_id}/messages/",
+            data=json.dumps(
+                {"prompt": "Intrude", "provider_id": "openai", "model_id": "gpt-5.6-luna"}
+            ),
+            content_type="application/json",
+        )
+
+        self.assertEqual(created.status_code, 200)
+        self.assertEqual(Conversation.objects.get(pk=conversation_id).owner, self.user)
+        self.assertEqual(history.json(), {"conversations": []})
+        self.assertEqual(foreign_detail.status_code, 404)
+        self.assertEqual(foreign_detail.json(), unknown_detail.json())
+        self.assertEqual(foreign_continue.status_code, 404)
+        self.assertEqual(foreign_continue.json()["error"]["code"], "conversation_not_found")
+        self.assertEqual(generate.call_count, 1)
+
+    def test_foreign_retry_and_unknown_retry_return_the_same_not_found_response(self):
+        other = get_user_model().objects.create_user(username="retry-viewer", password="StrongPassword123!")
+        conversation = Conversation.objects.create(
+            owner=self.user,
+            title="Private failed thread",
+            provider="openai",
+            model_id="gpt-5.6-luna",
+        )
+        Message.objects.create(conversation=conversation, role=Message.Role.USER, content="Original prompt")
+        failed = Message.objects.create(
+            conversation=conversation,
+            role=Message.Role.ASSISTANT,
+            content="",
+            status=Message.Status.FAILED,
+            provider="openai",
+            model_id="gpt-5.6-luna",
+        )
+        client = Client()
+        client.force_login(other)
+        payload = json.dumps({"assistant_message_id": failed.pk})
+
+        foreign = client.post(
+            f"/api/conversations/{conversation.pk}/retry/",
+            data=payload,
+            content_type="application/json",
+        )
+        missing = client.post(
+            "/api/conversations/00000000-0000-0000-0000-000000000001/retry/",
+            data=payload,
+            content_type="application/json",
+        )
+
+        self.assertEqual((foreign.status_code, missing.status_code), (404, 404))
+        self.assertEqual(foreign.json(), missing.json())
+        self.assertEqual(Message.objects.get(pk=failed.pk).status, Message.Status.FAILED)

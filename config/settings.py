@@ -27,6 +27,19 @@ CSRF_TRUSTED_ORIGINS = [
     for origin in os.environ.get("DJANGO_CSRF_TRUSTED_ORIGINS", "").split(",")
     if origin.strip()
 ]
+app_base_path = os.environ.get("DJANGO_APP_BASE_PATH", "/").strip()
+APP_BASE_PATH = "/{}/".format(app_base_path.strip("/")) if app_base_path.strip("/") else "/"
+SIGNUPS_ENABLED = os.environ.get("DJANGO_SIGNUPS_ENABLED", "false").strip().lower() in {
+    "1",
+    "true",
+    "yes",
+    "on",
+}
+LOGIN_URL = "{}accounts/login/".format(APP_BASE_PATH)
+LOGIN_REDIRECT_URL = APP_BASE_PATH
+LOGOUT_REDIRECT_URL = LOGIN_URL
+SESSION_COOKIE_SECURE = not DEBUG
+CSRF_COOKIE_SECURE = not DEBUG
 
 INSTALLED_APPS = [
     "django.contrib.auth",
@@ -60,6 +73,7 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
+                "config.context_processors.app_mount",
             ],
         },
     },

@@ -24,7 +24,7 @@ class ProxyFailure(Exception):
 
 
 class ProxyClient:
-    def generate(self, provider_id, model_id, messages):
+    def generate(self, provider_id, model_id, messages, system_prompt=""):
         option = get_model_option(provider_id, model_id)
         if option is None:
             raise ProxyFailure(
@@ -41,7 +41,13 @@ class ProxyClient:
                 http_status=503,
             )
 
-        url, headers, body = self._build_request(provider_id, model_id, api_key, messages)
+        url, headers, body = self._build_request(
+            provider_id,
+            model_id,
+            api_key,
+            messages,
+            system_prompt,
+        )
         request = Request(
             url,
             data=json.dumps(body).encode("utf-8"),
@@ -74,7 +80,7 @@ class ProxyClient:
         return self._read_answer(provider_id, data)
 
     @staticmethod
-    def _build_request(provider_id, model_id, api_key, messages):
+    def _build_request(provider_id, model_id, api_key, messages, system_prompt=""):
         common_headers = {"Content-Type": "application/json", "Accept": "application/json"}
         if provider_id == "openai":
             return (
@@ -82,7 +88,11 @@ class ProxyClient:
                 {**common_headers, "Authorization": f"Bearer {api_key}"},
                 {
                     "model": model_id,
-                    "messages": messages,
+                    "messages": (
+                        [{"role": "system", "content": system_prompt}] + messages
+                        if system_prompt
+                        else messages
+                    ),
                     "max_tokens": MAX_OUTPUT_TOKENS,
                     "reasoning_effort": "none",
                 },
@@ -100,6 +110,7 @@ class ProxyClient:
                     "messages": messages,
                     "max_tokens": MAX_OUTPUT_TOKENS,
                     "thinking": {"type": "disabled"},
+                    **({"system": system_prompt} if system_prompt else {}),
                 },
             )
         if provider_id == "google":
@@ -110,16 +121,19 @@ class ProxyClient:
                 }
                 for message in messages
             ]
+            body = {
+                "contents": contents,
+                "generationConfig": {
+                    "maxOutputTokens": MAX_OUTPUT_TOKENS,
+                    "thinkingConfig": {"thinkingBudget": 0},
+                },
+            }
+            if system_prompt:
+                body["systemInstruction"] = {"parts": [{"text": system_prompt}]}
             return (
                 f"{PROXY_BASE_URL}/google/v1beta/models/{model_id}:generateContent",
                 {**common_headers, "x-goog-api-key": api_key},
-                {
-                    "contents": contents,
-                    "generationConfig": {
-                        "maxOutputTokens": MAX_OUTPUT_TOKENS,
-                        "thinkingConfig": {"thinkingBudget": 0},
-                    },
-                },
+                body,
             )
         raise ProxyFailure("unsupported_provider", "That provider is not enabled.", 400)
 

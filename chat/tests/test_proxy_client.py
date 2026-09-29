@@ -28,6 +28,24 @@ class RawResponse(FakeResponse):
 
 
 class ProxyClientTests(SimpleTestCase):
+    def test_system_prompt_uses_each_provider_native_field(self):
+        messages = [{"role": "user", "content": "Hi"}]
+
+        _, _, openai = ProxyClient._build_request(
+            "openai", "gpt-5.6-luna", "key", messages, system_prompt="Be concise."
+        )
+        _, _, anthropic = ProxyClient._build_request(
+            "anthropic", "claude-haiku-4-5-20251001", "key", messages, system_prompt="Be concise."
+        )
+        _, _, google = ProxyClient._build_request(
+            "google", "gemini-3.8-flash", "key", messages, system_prompt="Be concise."
+        )
+
+        self.assertEqual(openai["messages"][0], {"role": "system", "content": "Be concise."})
+        self.assertEqual(anthropic["system"], "Be concise.")
+        self.assertEqual(google["systemInstruction"], {"parts": [{"text": "Be concise."}]})
+        self.assertEqual(google["contents"], [{"role": "user", "parts": [{"text": "Hi"}]}])
+
     @patch.dict(os.environ, {"BUILD_OPENAI_KEY": "test-openai-key"})
     @patch("chat.services.proxy_client.urlopen")
     def test_openai_chat_completions_contract(self, urlopen):

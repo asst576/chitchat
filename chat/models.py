@@ -1,5 +1,7 @@
 import uuid
+from decimal import Decimal
 
+from django.conf import settings
 from django.db import models
 from django.db.models import Q
 
@@ -12,6 +14,11 @@ class Provider(models.TextChoices):
 
 class Conversation(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    owner = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="conversations",
+    )
     title = models.CharField(max_length=120, default="New chat")
     provider = models.CharField(max_length=20, choices=Provider.choices)
     model_id = models.CharField(max_length=120)
@@ -20,7 +27,10 @@ class Conversation(models.Model):
 
     class Meta:
         ordering = ("-updated_at", "-id")
-        indexes = [models.Index(fields=("-updated_at", "-id"), name="chat_recent_idx")]
+        indexes = [
+            models.Index(fields=("-updated_at", "-id"), name="chat_recent_idx"),
+            models.Index(fields=("owner", "-updated_at"), name="chat_owner_recent_idx"),
+        ]
         constraints = [
             models.CheckConstraint(
                 condition=Q(provider__in=Provider.values),
@@ -30,6 +40,53 @@ class Conversation(models.Model):
 
     def __str__(self):
         return self.title
+
+
+class UserProfile(models.Model):
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="profile",
+    )
+    display_name = models.CharField(max_length=120, blank=True)
+    system_prompt = models.TextField(blank=True, default="")
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.display_name or self.user.get_username()
+
+
+class BillingAccount(models.Model):
+    class Status(models.TextChoices):
+        ACTIVE = "active", "Active"
+        INACTIVE = "inactive", "Inactive"
+
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="billing_account",
+    )
+    account_name = models.CharField(max_length=120, default="Personal")
+    currency_code = models.CharField(max_length=3, default="USD", editable=False)
+    status = models.CharField(max_length=10, choices=Status.choices, default=Status.ACTIVE)
+    available_credit = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=Decimal("2.00"),
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(
+                condition=Q(available_credit__gte=0),
+                name="chat_billing_credit_nonneg_ck",
+            ),
+        ]
+
+    def __str__(self):
+        return "{} billing account".format(self.user.get_username())
 
 
 class Message(models.Model):

@@ -13,6 +13,7 @@
   const proxyDisclosure = document.querySelector("#proxy-disclosure");
   const csrfToken = document.querySelector("[name=csrfmiddlewaretoken]").value;
   const apiRoot = new URL("api", document.baseURI).pathname.replace(/\/$/, "");
+  const loginUrl = document.documentElement.dataset.loginUrl;
 
   let modelOptions = [];
   let conversations = [];
@@ -28,6 +29,10 @@
       headers.set("X-CSRFToken", csrfToken);
     }
     const response = await fetch(url, { ...options, headers, credentials: "same-origin" });
+    if (response.status === 401) {
+      window.location.assign(new URL(loginUrl, document.baseURI));
+      throw new Error("Your session has expired. Redirecting to sign in.");
+    }
     let data;
     try {
       data = await response.json();

@@ -1,0 +1,29 @@
+{% extends "accounts/base.html" %}
+
+{% block title %}My Profile - LiteChat{% endblock %}
+
+{% block content %}
+  <div class="account-panel">
+    <span class="eyebrow">ACCOUNT DETAILS</span>
+    <h1>My Profile</h1>
+    <p class="account-intro">Your identity details are private. Only your display name and system prompt can be changed here.</p>
+    <dl class="profile-facts">
+      <div><dt>Display name</dt><dd>{{ own_profile.display_name|default:request.user.get_username }}</dd></div>
+      <div><dt>Username</dt><dd>{{ request.user.get_username }}</dd></div>
+      <div><dt>Account ID</dt><dd>{{ request.user.pk }}</dd></div>
+      <div><dt>Member since</dt><dd>{{ request.user.date_joined|date:"F j, Y" }}</dd></div>
+    </dl>
+    <form method="post" action="{{ app_base_path }}profile/" class="account-form profile-form">
+      {% csrf_token %}
+      {% if form.non_field_errors %}<div class="form-errors">{{ form.non_field_errors }}</div>{% endif %}
+      {% for field in form %}
+        <div class="form-field">
+          <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+          {{ field }}
+          {% if field.errors %}<div class="field-errors">{{ field.errors }}</div>{% endif %}
+        </div>
+      {% endfor %}
+      <button class="primary-action" type="submit">Save profile</button>
+    </form>
+  </div>
+{% endblock %}

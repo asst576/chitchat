@@ -145,6 +145,11 @@ button { cursor: pointer; }
   font-size: 11px;
 }
 
+.account-nav { display: grid; gap: 4px; margin: 0 0 14px; }
+.account-nav a, .account-nav button { display: block; width: 100%; padding: 9px 11px; border: 0; border-radius: 7px; color: #d9e5df; background: transparent; font-size: 12px; text-align: left; text-decoration: none; }
+.account-nav a:hover, .account-nav button:hover, .account-nav a[aria-current="page"] { color: #fff; background: rgb(255 255 255 / 10%); }
+.account-nav form { margin: 0; }
+
 .privacy-dot { width: 7px; height: 7px; border-radius: 50%; background: #8dc2a5; box-shadow: 0 0 0 4px rgb(141 194 165 / 13%); }
 
 .workspace {
@@ -255,6 +260,39 @@ button { cursor: pointer; }
 .send-button span:last-child { color: #f1a28a; font-size: 15px; }
 .proxy-disclosure { max-width: 700px; margin: 11px auto 0; color: #8b9791; font-size: 9px; line-height: 1.5; text-align: center; }
 
+.account-workspace { min-height: 100vh; }
+.account-content { width: min(100% - 48px, 760px); margin: 0 auto; padding: clamp(28px, 7vh, 70px) 0 52px; }
+.account-panel { padding: clamp(22px, 5vw, 42px); border: 1px solid var(--line); border-radius: 16px; background: rgb(255 255 255 / 92%); box-shadow: var(--shadow); }
+.account-panel h1, .auth-card h1 { margin: 12px 0 9px; font-size: clamp(29px, 4vw, 39px); font-weight: 500; letter-spacing: -1.8px; }
+.account-intro { margin: 0 0 27px; color: var(--ink-muted); font-size: 13px; line-height: 1.65; }
+.profile-facts, .billing-facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin: 0 0 30px; }
+.profile-facts > div, .billing-facts > div { min-width: 0; padding: 14px; border: 1px solid var(--line); border-radius: 9px; background: #fbfcf9; }
+.profile-facts dt, .billing-facts dt { margin-bottom: 8px; color: var(--ink-muted); font-family: "SFMono-Regular", Consolas, monospace; font-size: 9px; letter-spacing: 1px; text-transform: uppercase; }
+.profile-facts dd, .billing-facts dd { margin: 0; overflow-wrap: anywhere; font-size: 12px; font-weight: 600; }
+.billing-name { margin: 5px 0 18px; color: var(--forest); font-family: "Avenir Next", Avenir, "Segoe UI", sans-serif; font-size: 20px; font-weight: 600; }
+.status-pill { display: inline-block; padding: 4px 8px; border-radius: 99px; color: #24654c; background: #e2f2e8; font-size: 10px; }
+.status-pill.inactive { color: #8a4734; background: #f8e9df; }
+.credit-value { color: var(--forest); font-variant-numeric: tabular-nums; }
+.billing-note { margin: 0; padding: 13px 15px; border-left: 2px solid var(--accent); color: var(--ink-muted); background: #fbf8f3; font-size: 11px; line-height: 1.7; }
+.account-form { display: grid; gap: 17px; }
+.form-field { display: grid; gap: 7px; }
+.form-field > label { color: var(--ink); font-size: 11px; font-weight: 600; }
+.form-field input, .form-field textarea { width: 100%; padding: 11px 12px; border: 1px solid #d7e1da; border-radius: 8px; outline: 0; color: var(--ink); background: #fff; font-size: 13px; }
+.form-field textarea { min-height: 105px; resize: vertical; line-height: 1.6; }
+.form-field input:focus, .form-field textarea:focus { border-color: #8fae9f; box-shadow: 0 0 0 3px rgb(126 165 149 / 12%); }
+.field-help, .field-errors, .form-errors { color: var(--ink-muted); font-size: 10px; line-height: 1.6; }
+.field-errors, .form-errors { color: var(--accent-deep); }
+.field-help ul, .field-errors ul, .form-errors ul { margin: 0; padding-left: 17px; }
+.primary-action { min-height: 42px; padding: 0 16px; border: 0; border-radius: 8px; color: #fff; background: var(--forest); font-size: 12px; font-weight: 600; }
+.primary-action:hover { background: #24534e; }
+
+.auth-page { display: grid; min-height: 100vh; place-items: center; padding: 24px 14px; background: radial-gradient(ellipse at 50% 0, #e4eee9, transparent 55%), var(--paper); }
+.auth-card { width: min(100%, 440px); padding: clamp(25px, 7vw, 46px); border: 1px solid var(--line); border-radius: 17px; background: #fff; box-shadow: var(--shadow); }
+.auth-wordmark { margin: 0 0 36px; color: var(--ink); }
+.auth-card .account-intro { margin-bottom: 22px; }
+.auth-switch { margin: 23px 0 0; color: var(--ink-muted); font-size: 11px; text-align: center; }
+.auth-switch a { color: var(--forest); font-weight: 600; }
+
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; clip-path: inset(50%); }
 
 @keyframes appear { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
@@ -267,6 +305,9 @@ button { cursor: pointer; }
   .wordmark-mark { width: 28px; height: 28px; }
   .sidebar { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 10px; }
   .new-chat-button { width: auto; min-height: 38px; padding: 0 11px; font-size: 11px; }
+  .account-nav { display: flex; grid-column: 1 / -1; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px; margin: 0; }
+  .account-nav a, .account-nav button { width: auto; padding: 7px 8px; font-size: 10px; }
+  .account-nav form { margin-left: auto; }
   .history-heading { display: flex; grid-column: 1 / -1; margin: 3px 2px 0; }
   .history-nav { display: block; grid-column: 1 / -1; max-height: 88px; overflow-x: auto; overflow-y: hidden; }
   .history-list { display: flex; gap: 6px; width: max-content; min-width: 100%; }
@@ -287,6 +328,9 @@ button { cursor: pointer; }
   .composer-wrap { width: calc(100% - 28px); padding-bottom: 12px; }
   .composer-hint { font-size: 8px; }
   .proxy-disclosure { font-size: 8px; }
+  .account-content { width: calc(100% - 28px); padding: 24px 0 35px; }
+  .account-panel { padding: 22px 18px; }
+  .profile-facts, .billing-facts { grid-template-columns: 1fr; }
 }
 
 @media (prefers-reduced-motion: reduce) {

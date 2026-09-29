@@ -1,0 +1,18 @@
+{% extends "accounts/base.html" %}
+
+{% block title %}Billing Account - LiteChat{% endblock %}
+
+{% block content %}
+  <div class="account-panel billing-panel">
+    <span class="eyebrow">PERSONAL ACCOUNT</span>
+    <h1>Billing Account</h1>
+    <p class="account-intro">A read-only view of the internal account associated with your profile.</p>
+    <div class="billing-name">[{{ account.account_name }}] {{ display_name }}</div>
+    <dl class="billing-facts">
+      <div><dt>Status</dt><dd><span class="status-pill {{ account.status }}">{{ account.get_status_display }}</span></dd></div>
+      <div><dt>Available credit</dt><dd class="credit-value">{{ account.currency_code }} ${{ account.available_credit|floatformat:2 }}</dd></div>
+      <div><dt>Account type</dt><dd>Personal</dd></div>
+    </dl>
+    <p class="billing-note">This balance is simulated display information. No payments or purchases are processed, and it does not limit chat access.</p>
+  </div>
+{% endblock %}

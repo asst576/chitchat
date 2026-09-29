@@ -20,7 +20,7 @@ class ChatError(Exception):
         self.assistant_message_id = None
 
 
-def submit_prompt(prompt, provider_id, model_id, conversation_id=None):
+def submit_prompt(user, prompt, provider_id, model_id, conversation_id=None):
     prompt = prompt.strip() if isinstance(prompt, str) else ""
     if not prompt:
         raise ChatError("empty_prompt", "Enter a message before sending.", 400)
@@ -35,13 +35,14 @@ def submit_prompt(prompt, provider_id, model_id, conversation_id=None):
             if len(prompt) > TITLE_LENGTH:
                 title = f"{prompt[: TITLE_LENGTH - 3].rstrip()}..."
             conversation = Conversation.objects.create(
+                owner=user,
                 title=title or "New chat",
                 provider=provider_id,
                 model_id=model_id,
             )
         else:
             try:
-                conversation = Conversation.objects.get(pk=conversation_id)
+                conversation = Conversation.objects.get(pk=conversation_id, owner=user)
             except (Conversation.DoesNotExist, ValueError):
                 raise ChatError("conversation_not_found", "Conversation not found.", 404) from None
 
@@ -70,14 +71,15 @@ def submit_prompt(prompt, provider_id, model_id, conversation_id=None):
             model_id=model_id,
         )
         context = _build_context(conversation, assistant_message.pk)
+        system_prompt = getattr(getattr(user, "profile", None), "system_prompt", "")
 
-    return _finish_assistant(conversation, assistant_message, context)
+    return _finish_assistant(conversation, assistant_message, context, system_prompt)
 
 
-def retry_failed_response(conversation_id, assistant_message_id):
+def retry_failed_response(user, conversation_id, assistant_message_id):
     with transaction.atomic():
         try:
-            conversation = Conversation.objects.get(pk=conversation_id)
+            conversation = Conversation.objects.get(pk=conversation_id, owner=user)
             assistant_message = conversation.messages.get(
                 pk=assistant_message_id,
                 role=Message.Role.ASSISTANT,
@@ -115,8 +117,9 @@ def retry_failed_response(conversation_id, assistant_message_id):
         assistant_message.failure_code = ""
         assistant_message.save(update_fields=("status", "failure_code"))
         context = _build_context(conversation, assistant_message.pk)
+        system_prompt = getattr(getattr(user, "profile", None), "system_prompt", "")
 
-    return _finish_assistant(conversation, assistant_message, context)
+    return _finish_assistant(conversation, assistant_message, context, system_prompt)
 
 
 def _build_context(conversation, pending_assistant_id):
@@ -146,12 +149,13 @@ def _build_context(conversation, pending_assistant_id):
     return context
 
 
-def _finish_assistant(conversation, assistant_message, context):
+def _finish_assistant(conversation, assistant_message, context, system_prompt):
     try:
         answer = ProxyClient().generate(
             conversation.provider,
             assistant_message.model_id,
             context,
+            system_prompt=system_prompt,
         )
     except ProxyFailure as error:
         Message.objects.filter(pk=assistant_message.pk).update(

@@ -1,11 +1,11 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-login-url="{{ app_base_path }}accounts/login/">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#122b2a">
   <title>LiteChat workspace</title>
-  <base href="./">
+  <base href="{{ app_base_path }}">
   <link rel="stylesheet" href="static/chat/chat.css">
 </head>
 <body>
@@ -20,6 +20,8 @@
         <span aria-hidden="true">+</span>
         New conversation
       </button>
+
+      {% include "chat/_account_nav.html" %}
 
       <div class="history-heading">
         <span>RECENT</span>
