@@ -1,14 +1,14 @@
 # CodeRange and Proxy Footguns
 
-## Port 5001 Is Already In Use
+## LiteChat Cannot Bind Port 5001 Yet
 
-During implementation, `127.0.0.1:5001` responded with a different Django application (including unrelated admin, accounts, campaigns, and feed routes). The user explicitly requested that this existing service remain running. LiteChat did not stop or replace it, and LiteChat has not been verified as reachable on port `5001`.
+The current requested LiteChat port is `5001`, but `127.0.0.1:5001` is occupied by a different application. A startup attempt for LiteChat fails with `That port is already in use.`; the listener returns HTTP 404 for LiteChat's `/healthz/` and `/api/providers/` endpoints. TCP reachability therefore does not mean LiteChat is serving there.
 
-The user selected port `5002` for LiteChat. A local Django smoke test on `127.0.0.1:5002` passed. Do not stop or replace the existing `5001` process. No CodeRange route mapping for `5002` is available in this workspace, so it is not yet possible to determine whether the platform exposes that port externally. Obtain/verify its route mapping before claiming the app is reachable. Local Django test-client or loopback success does not verify CodeRange routing.
+Earlier, port `5002` was selected to preserve the incumbent service, and a local Django smoke test there passed. The latest request changes the target back to `5001`; the existing process was not stopped or replaced. Its owner must authorize freeing/reconfiguring `5001`, or the platform must provide a different process/route allocation. No external CodeRange route mapping is available in this workspace. Local Django test-client or loopback success does not verify CodeRange routing.
 
 ## Server-Side Proxy Keys
 
-The proxy docs name `BUILD_OPENAI_KEY`, `BUILD_ANTHROPIC_KEY`, and `BUILD_GOOGLE_KEY`. The app checks the relevant variable and sends it only from Django to the fixed proxy host. `.env.example` values are placeholders, not working keys. Although the user reports that these variables are configured in CodeRange, they were absent from this execution process, so live provider requests were skipped. Verify injection into the app worker without printing or sharing values.
+The proxy docs name `BUILD_OPENAI_KEY`, `BUILD_ANTHROPIC_KEY`, and `BUILD_GOOGLE_KEY`. The app checks the relevant variable and sends it only from Django to the fixed proxy host. `.env.example` values are placeholders, not working keys. All three variables were present in the current execution environment, and live OpenAI-, Anthropic-, and Google-compatible proxy requests each returned HTTP 200 with a complete parsed response. This does not independently verify injection into a separately managed CodeRange worker. Verify worker configuration without printing or sharing values.
 
 Never paste actual key values into Git-tracked files, issue descriptions, logs, frontend configuration, or browser storage. Configure them with the platform's secret/environment mechanism. The app does not load `.env` automatically.
 

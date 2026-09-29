@@ -19,6 +19,6 @@ LiteChat is a private, single-user Django chat application. It provides a browse
 - Responses are non-streaming. Streaming is documented by the proxy but is not implemented.
 - Messages are text-only. Attachments, web search, tools, agents, billing, model racing, automatic context compaction, rename/delete, and import/export are not implemented.
 - Context includes completed user/assistant turns plus the current prompt. Long histories are not automatically truncated or summarized; a proxy/context-size rejection must be handled by starting a shorter conversation.
-- The default CodeRange port `5001` is occupied by another Django service. The user selected `5002` for LiteChat, but CodeRange routing for that port has not been verified; see the [CodeRange and proxy footgun](footguns/coderange-and-proxy.md).
+- The current requested CodeRange port is `5001`, but another application occupies it. Its LiteChat health/provider endpoints return 404 and LiteChat startup cannot bind; CodeRange routing and static serving are not verified. See the [CodeRange and proxy footgun](footguns/coderange-and-proxy.md).
 
 For installation and local development, see [Setup](setup.md). For request and persistence boundaries, see [Architecture](architecture.md).
