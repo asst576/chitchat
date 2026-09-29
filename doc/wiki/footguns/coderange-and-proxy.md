@@ -2,13 +2,21 @@
 
 ## CodeRange Subpath and Static Assets
 
-LiteChat is intended to listen on `0.0.0.0:5001`, mounted at `/proxy/5001/`. Keep browser asset and API URLs below this prefix: the page uses `<base href="./">`, relative CSS/JavaScript URLs, and an API root derived from `document.baseURI`. This produces `/proxy/5001/static/chat/chat.css`, `/proxy/5001/static/chat/chat.js`, and `/proxy/5001/api/...` browser paths. Django keeps `STATIC_URL = "/static/"`; CodeRange must strip `/proxy/5001` before forwarding so Django receives `/static/...` and `/api/...`.
+ChitChat is mounted at `/proxy/5001/` and the Django worker listens on port `5001`. Set `DJANGO_APP_BASE_PATH=/proxy/5001/`. Templates use that base for browser links/forms and relative assets, while JavaScript builds its API URL from `document.baseURI`. Browser requests therefore target `/proxy/5001/static/...` and `/proxy/5001/api/...`; Django keeps `STATIC_URL = "/static/"` and receives the path after the CodeRange proxy strips the mount.
 
-The injected `VSCODE_PROXY_URI` pattern `/proxy/{{port}}/` gives the browser URL `https://<workspace-host>.coderange.net/proxy/5001/`. The user reports the page root loads. Local checks confirm the relative URLs and that CSS, JavaScript, API, and chat flows work after simulating prefix stripping. External asset delivery after the fix was not independently confirmed in this session. If styling or interactions fail, inspect the browser network requests and verify the CodeRange proxy both forwards `/proxy/5001/<path>` and strips the mount prefix upstream. Private-access policy and SQLite persistence across restarts remain unverified.
+Authentication redirects use a different URL space. Django `LOGIN_URL`, `LOGIN_REDIRECT_URL`, and `LOGOUT_REDIRECT_URL` are upstream-rooted (`/accounts/login/`, `/`, and `/accounts/login/`). CodeRange adds `/proxy/5001/` to root-relative `Location` headers. Do not put the mount prefix in those settings or redirect responses will duplicate it. The login view removes an existing mount prefix from a safe `next` target before redirecting.
+
+The app's `runserver --noreload` worker must be restarted after deploying changed templates, JavaScript, or settings; it does not load file changes automatically. Verify health, login/signup redirects, CSS/JavaScript, and API requests through the configured mount. Tests simulate `SCRIPT_NAME=/proxy/5001`; the live port-5001 worker has also served those assets and routes. External browser access, CodeRange private-access policy, TLS termination, and storage persistence remain platform-specific checks.
+
+## Legacy Database Ownership Migration
+
+For an existing SQLite database, take an SQLite-consistent backup and rehearse restoring/migrating a copy before touching the live schema. Record conversation/message counts and metadata without reading message contents. Stop an old `--noreload` worker before migration so it cannot create new ownerless rows.
+
+Migration `0003` adds a nullable owner. Create the operator-selected superuser with `createsuperuser`, replacing `BOOTSTRAP_USERNAME` below with that account's username. Run `provision_bootstrap_account --username BOOTSTRAP_USERNAME`, then `assign_legacy_conversation_owner --username BOOTSTRAP_USERNAME`. Verify every retained conversation is owned by that account and the original message count/order is preserved. Only then apply the remaining migration; `0004_require_conversation_owner` aborts if any ownerless rows remain. Signup remains disabled until the backfill and non-null migration succeed. Never guess an owner, assign chats to the first self-registered user, or delete legacy rows.
 
 ## Server-Side Proxy Keys
 
-The proxy docs name `BUILD_OPENAI_KEY`, `BUILD_ANTHROPIC_KEY`, and `BUILD_GOOGLE_KEY`. The app checks the relevant variable and sends it only from Django to the fixed proxy host. `.env.example` values are placeholders, not working keys. All three variables were present in the current execution environment, and live OpenAI-, Anthropic-, and Google-compatible proxy requests each returned HTTP 200 with a complete parsed response. This does not independently verify injection into a separately managed CodeRange worker. Verify worker configuration without printing or sharing values.
+The proxy docs name `BUILD_OPENAI_KEY`, `BUILD_ANTHROPIC_KEY`, and `BUILD_GOOGLE_KEY`. The app checks the relevant variable and sends it only from Django to the fixed proxy host. `.env.example` values are placeholders, not working keys. Verify key injection into the running worker without printing or sharing values.
 
 Never paste actual key values into Git-tracked files, issue descriptions, logs, frontend configuration, or browser storage. Configure them with the platform's secret/environment mechanism. The app does not load `.env` automatically.
 
@@ -18,9 +26,9 @@ The public proxy docs state that the OpenAI-, Anthropic-, and Gemini-compatible 
 
 No model-list endpoint is documented. Only the three exact model IDs listed in the proxy docs are currently allowlisted. Do not add model names by guessing.
 
-## Private Single-User Deployment
+## Signup and Account Provisioning
 
-The application has no built-in authentication or per-user conversation isolation. The user selected private single-user use. Keep the CodeRange route private; do not expose it on a public/shared host without adding authentication and ownership checks.
+Signup defaults to disabled. Enabling `DJANGO_SIGNUPS_ENABLED` alone is insufficient: signup also requires a provisioned superuser with profile/billing records and zero ownerless conversations. Keep the CodeRange route private even when signup is enabled; app-level authentication does not replace platform access control. There is no password-reset or email-recovery flow.
 
 ## Django Deployment Settings
 
