@@ -1,3 +1,6 @@
+import os
+import subprocess
+import sys
 from decimal import Decimal
 from unittest.mock import patch
 
@@ -206,21 +209,26 @@ class AccountViewTests(TestCase):
         with self.assertRaises(IntegrityError), transaction.atomic():
             BillingAccount.objects.filter(pk=account.pk).update(available_credit=Decimal("-0.01"))
 
-    @override_settings(APP_BASE_PATH="/proxy/5001/", LOGIN_URL="/proxy/5001/accounts/login/")
+    @override_settings(APP_BASE_PATH="/proxy/5001/")
     def test_mount_prefix_is_used_for_account_assets_navigation_and_login_redirect(self):
         anonymous = Client().get("/")
         user = get_user_model().objects.create_user(username="mounted", password=PASSWORD)
         self.client.force_login(user)
         page = self.client.get("/")
 
-        self.assertEqual(anonymous["Location"], "/proxy/5001/accounts/login/?next=/")
+        self.assertEqual(anonymous["Location"], "/accounts/login/?next=/")
         page_html = page.content.decode()
         self.assertIn('<base href="/proxy/5001/">', page_html)
         self.assertIn('action="/proxy/5001/accounts/logout/"', page_html)
         self.assertIn('data-login-url="/proxy/5001/accounts/login/"', page_html)
 
-    @override_settings(APP_BASE_PATH="/proxy/5001/", LOGIN_URL="/proxy/5001/accounts/login/", LOGIN_REDIRECT_URL="/proxy/5001/")
-    def test_login_next_redirect_stays_inside_configured_mount(self):
+    @override_settings(
+        APP_BASE_PATH="/proxy/5001/",
+        LOGIN_URL="/accounts/login/",
+        LOGIN_REDIRECT_URL="/",
+        LOGOUT_REDIRECT_URL="/accounts/login/",
+    )
+    def test_login_next_redirect_is_normalized_for_the_proxy_mount(self):
         user = get_user_model().objects.create_user(username="mounted-login", password=PASSWORD)
         outside_mount = Client().post(
             "/accounts/login/?next=/billing/",
@@ -231,5 +239,127 @@ class AccountViewTests(TestCase):
             {"username": user.username, "password": PASSWORD, "next": "/proxy/5001/profile/"},
         )
 
-        self.assertEqual(outside_mount["Location"], "/proxy/5001/billing/")
-        self.assertEqual(inside_mount["Location"], "/proxy/5001/profile/")
+        self.assertEqual(outside_mount["Location"], "/billing/")
+        self.assertEqual(inside_mount["Location"], "/profile/")
+
+    def test_mount_environment_keeps_auth_location_paths_upstream_relative(self):
+        env = os.environ.copy()
+        env.update(
+            DJANGO_DEBUG="true",
+            DJANGO_SETTINGS_MODULE="config.settings",
+            DJANGO_APP_BASE_PATH="/proxy/5001/",
+        )
+        result = subprocess.run(
+            [
+                sys.executable,
+                "-c",
+                "from django.conf import settings; print('|'.join((settings.APP_BASE_PATH, settings.LOGIN_URL, settings.LOGIN_REDIRECT_URL, settings.LOGOUT_REDIRECT_URL)))",
+            ],
+            check=True,
+            capture_output=True,
+            text=True,
+            env=env,
+        )
+
+        self.assertEqual(
+            result.stdout.strip(),
+            "/proxy/5001/|/accounts/login/|/|/accounts/login/",
+        )
+
+    @override_settings(
+        APP_BASE_PATH="/proxy/5001/",
+        LOGIN_URL="/accounts/login/",
+        LOGIN_REDIRECT_URL="/",
+        LOGOUT_REDIRECT_URL="/accounts/login/",
+        SIGNUPS_ENABLED=True,
+    )
+    def test_code_range_script_prefix_is_added_once_to_auth_routes(self):
+        self.make_superuser()
+        mount = "/proxy/5001/"
+        script_name = mount.rstrip("/")
+        anonymous = Client()
+
+        def external_location(upstream_location):
+            path, separator, query = upstream_location.partition("?")
+            return mount.rstrip("/") + path + (separator + query if separator else "")
+
+        chat_redirect = anonymous.get("/", SCRIPT_NAME=script_name)
+        self.assertEqual(chat_redirect["Location"], "/accounts/login/?next=/proxy/5001/")
+        external_login_url = external_location(chat_redirect["Location"])
+        self.assertEqual(
+            external_login_url.split("?", 1)[0],
+            "/proxy/5001/accounts/login/",
+        )
+        self.assertNotIn("/proxy/5001/proxy/5001/", external_login_url)
+
+        signup_page = anonymous.get("/accounts/signup/", SCRIPT_NAME=script_name)
+        self.assertEqual(signup_page.status_code, 200)
+        self.assertIn('action="/proxy/5001/accounts/signup/"', signup_page.content.decode())
+
+        signup = anonymous.post(
+            "/accounts/signup/",
+            {
+                "username": "mounted-signup",
+                "display_name": "Mounted Member",
+                "password1": PASSWORD,
+                "password2": PASSWORD,
+            },
+            SCRIPT_NAME=script_name,
+        )
+        self.assertEqual(signup.status_code, 302)
+        self.assertEqual(signup["Location"], "/accounts/login/")
+        self.assertEqual(external_location(signup["Location"]), "/proxy/5001/accounts/login/")
+
+        member = Client()
+        login = member.post(
+            "/accounts/login/?next=/proxy/5001/profile/",
+            {"username": "mounted-signup", "password": PASSWORD},
+            SCRIPT_NAME=script_name,
+        )
+        self.assertEqual(login.status_code, 302)
+        self.assertEqual(login["Location"], "/profile/")
+        self.assertEqual(external_location(login["Location"]), "/proxy/5001/profile/")
+
+        profile_page = member.get("/profile/", SCRIPT_NAME=script_name)
+        billing_page = member.get("/billing/", SCRIPT_NAME=script_name)
+        self.assertEqual((profile_page.status_code, billing_page.status_code), (200, 200))
+        self.assertIn('action="/proxy/5001/profile/"', profile_page.content.decode())
+        self.assertIn('href="/proxy/5001/billing/"', profile_page.content.decode())
+        self.assertIn("[Personal] Mounted Member", billing_page.content.decode())
+        self.assertNotIn("/proxy/5001/proxy/5001/", profile_page.content.decode())
+        self.assertNotIn("/proxy/5001/proxy/5001/", billing_page.content.decode())
+
+        profile_save = member.post(
+            "/profile/",
+            {"display_name": "Updated Member", "system_prompt": "Be brief."},
+            SCRIPT_NAME=script_name,
+        )
+        self.assertEqual(profile_save.status_code, 302)
+        self.assertEqual(external_location(profile_save["Location"]), "/proxy/5001/profile/")
+        self.assertEqual(member.get("/billing/", SCRIPT_NAME=script_name).status_code, 200)
+        chat_page = member.get("/", SCRIPT_NAME=script_name)
+        self.assertEqual(chat_page.status_code, 200)
+        chat_html = chat_page.content.decode()
+        self.assertIn('<base href="/proxy/5001/">', chat_html)
+        self.assertIn('href="static/chat/chat.css"', chat_html)
+        self.assertIn('href="/proxy/5001/"', chat_html)
+        self.assertIn('href="/proxy/5001/profile/"', chat_html)
+        self.assertIn('href="/proxy/5001/billing/"', chat_html)
+        self.assertEqual(member.get("/api/conversations/", SCRIPT_NAME=script_name).status_code, 200)
+
+        logout = member.post("/accounts/logout/", SCRIPT_NAME=script_name)
+        self.assertEqual(logout.status_code, 302)
+        self.assertEqual(logout["Location"], "/accounts/login/")
+        self.assertEqual(external_location(logout["Location"]), "/proxy/5001/accounts/login/")
+        after_logout = member.get("/", SCRIPT_NAME=script_name)
+        self.assertEqual(after_logout.status_code, 302)
+        self.assertEqual(after_logout["Location"], "/accounts/login/?next=/proxy/5001/")
+        login_page = member.get("/accounts/login/", SCRIPT_NAME=script_name)
+        self.assertEqual(login_page.status_code, 200)
+        self.assertIn('action="/proxy/5001/accounts/login/"', login_page.content.decode())
+        all_redirects = (chat_redirect, signup, login, profile_save, logout, after_logout)
+        for response in all_redirects:
+            self.assertNotIn("/proxy/5001/proxy/5001/", external_location(response["Location"]))
+        all_pages = (signup_page, profile_page, billing_page, login_page, chat_page)
+        for response in all_pages:
+            self.assertNotIn("/proxy/5001/proxy/5001/", response.content.decode())

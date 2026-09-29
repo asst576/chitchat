@@ -63,13 +63,9 @@ class AccountLoginView(LoginView):
 
     def get_success_url(self):
         url = super().get_success_url()
-        base_path = settings.APP_BASE_PATH
-        if base_path != "/":
-            if url == base_path or url.startswith(base_path):
-                return url
-            if url.startswith("/") and not url.startswith("//"):
-                return base_path.rstrip("/") + url
-            return base_path
+        mount_prefix = settings.APP_BASE_PATH.rstrip("/")
+        if mount_prefix and (url == mount_prefix or url.startswith(mount_prefix + "/")):
+            return url[len(mount_prefix) :] or "/"
         return url
 
 
@@ -110,7 +106,7 @@ def profile(request):
     form = ProfileForm(request.POST or None, instance=own_profile)
     if request.method == "POST" and form.is_valid():
         form.save()
-        return redirect("{}profile/".format(settings.APP_BASE_PATH))
+        return redirect("/profile/")
     return render(
         request,
         "accounts/profile.html",

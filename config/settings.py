@@ -35,8 +35,8 @@ SIGNUPS_ENABLED = os.environ.get("DJANGO_SIGNUPS_ENABLED", "false").strip().lowe
     "yes",
     "on",
 }
-LOGIN_URL = "{}accounts/login/".format(APP_BASE_PATH)
-LOGIN_REDIRECT_URL = APP_BASE_PATH
+LOGIN_URL = "/accounts/login/"
+LOGIN_REDIRECT_URL = "/"
 LOGOUT_REDIRECT_URL = LOGIN_URL
 SESSION_COOKIE_SECURE = not DEBUG
 CSRF_COOKIE_SECURE = not DEBUG
