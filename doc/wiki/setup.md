@@ -60,4 +60,4 @@ The default test suite mocks the proxy boundary and makes no live or paid provid
 
 ## CodeRange
 
-The application is intended for port `5001`, but that port was already serving a separate Django app during implementation and the existing service was explicitly left running. Do not stop or replace that service to start LiteChat. A separate platform route/port assignment and CodeRange-specific host, CSRF/HTTPS, static-file, key-injection, and SQLite persistence configuration are still required. See [CodeRange and proxy footguns](footguns/coderange-and-proxy.md).
+The default port `5001` was already serving a separate Django app during implementation and the existing service was explicitly left running. The user selected `5002` for LiteChat. A local `runserver` smoke test on `127.0.0.1:5002` passed, but do not treat that as a CodeRange route check. Do not stop or replace the existing service; CodeRange must still confirm how port `5002` maps to a private route. CodeRange-specific host, CSRF/HTTPS, static-file, key-injection, and SQLite persistence configuration are also required. See [CodeRange and proxy footguns](footguns/coderange-and-proxy.md).

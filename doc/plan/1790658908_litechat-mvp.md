@@ -7,7 +7,7 @@
 
 ## Execution Status
 
-**Partially executed, blocked on CodeRange deployment inputs.** Django/SQLite chat behavior, the documented non-streaming proxy integrations, tests, and living documentation are implemented on `feature/litechat-mvp`. Do not merge yet. Remaining execution tasks require confirmation that the documented `BUILD_*_KEY` values are injected and a separate CodeRange route/port because the existing process on `5001` must remain running. CodeRange static serving, private access enforcement, and SQLite persistence also remain unverified.
+**Partially executed, blocked on CodeRange deployment inputs.** Django/SQLite chat behavior, the documented non-streaming proxy integrations, tests, and living documentation are implemented on `feature/litechat-mvp`. Do not merge yet. The user selected port `5002` to preserve the existing service on `5001`, but CodeRange routing for `5002` is unverified. The documented `BUILD_*_KEY` values are not injected yet. CodeRange static serving, private access enforcement, and SQLite persistence also remain unverified.
 
 ## Execution Notes
 
@@ -16,25 +16,26 @@
 - Verified contracts: OpenAI `POST /openai/v1/chat/completions`, `Authorization: Bearer ...`, model `gpt-5.6-luna`; Anthropic `POST /anthropic/v1/messages`, `x-api-key` plus `anthropic-version: 2023-06-01`, model `claude-haiku-4-5-20251001`; Google `POST /google/v1beta/models/gemini-3.8-flash:generateContent`, `x-goog-api-key`, model `gemini-3.8-flash`. The docs name server environment variables `BUILD_OPENAI_KEY`, `BUILD_ANTHROPIC_KEY`, and `BUILD_GOOGLE_KEY`. No model catalog endpoint or request timeout/cancellation contract is documented; the app uses a fixed allowlist and its own bounded 90-second non-streaming timeout.
 - The proxy docs state all three provider interfaces are backed by DeepSeek Flash and do not reproduce the named providers' model behavior. The UI and living docs must make that limitation clear; provider names identify compatible API interfaces, not distinct upstream model behavior.
 - Proxy keys are not present in the current process environment (only variable names were inspected). No key values were requested, copied, or committed. Actual provider calls remain unverified and tests must use a mock.
-- The user resolved the app audience as private single-user and explicitly said to keep the existing service on port `5001`. The app will not add user registration; deployment must remain private. The existing service on port `5001` exposes unrelated Django routes and was not stopped. This leaves the plan's `5001` startup/reachability requirement blocked until a separate route/port allocation is supplied.
+- The user resolved the app audience as private single-user, explicitly said to keep the existing service on port `5001`, and selected `5002` as the alternate LiteChat port. The app will not add user registration; deployment must remain private. The existing service on `5001` exposes unrelated Django routes and was not stopped. CodeRange routing for `5002` is still unverified.
+- The user confirmed the `BUILD_*_KEY` values are not injected yet. Variable names are documented; no secret values were requested or handled.
 - Runtime inspection found Python 3.12.3 and Django 5.2.17 in `/home/coder/.venv`; system `python3` has no Django installed. No `requests` package is installed in that virtualenv. The target repository itself had no code/config before execution.
 - B3 is partially complete: environment-driven Django settings, SQLite path, host/origin configuration, and static settings exist; CodeRange-specific host/CSRF/HTTPS/static-serving values remain unverified.
-- A local CodeRange-port smoke attempt found port `5001` already occupied by another Django application (its URL configuration exposed unrelated admin/accounts/campaigns/feed routes); this app did not stop or modify that process. Target-app reachability on `5001` is blocked until the port owner/platform allocation is clarified.
-- The current implementation includes conversation/message models and migrations, server-side provider adapters, history/message APIs, a responsive template UI, and mocked-proxy tests. Live provider calls and CodeRange hosting remain unverified because keys are not injected in the current process and port `5001` is occupied by a service that must remain running.
-- A local `runserver` smoke test on a temporary loopback port returned HTTP 200 for the workspace, CSS, and provider catalog. It does not count as CodeRange port/reachability verification.
+- A local CodeRange-port smoke attempt found port `5001` already occupied by another Django application (its URL configuration exposed unrelated admin/accounts/campaigns/feed routes); this app did not stop or modify that process. The user selected `5002`, but CodeRange's external mapping for that port is still unknown.
+- The current implementation includes conversation/message models and migrations, server-side provider adapters, history/message APIs, a responsive template UI, and mocked-proxy tests. Live provider calls and CodeRange hosting remain unverified because keys are not injected in the current process and CodeRange routing for `5002` is unknown; the service on `5001` must remain running.
+- Local `runserver` smoke tests on a temporary loopback port and on `127.0.0.1:5002` returned HTTP 200 for the workspace, CSS, and provider catalog. These do not count as CodeRange port/reachability verification.
 
 ## OPEN QUESTIONS
 
 The proxy contract, initial provider/model identifiers, key variable names, and private single-user audience have been resolved from the user and authoritative proxy documentation. Remaining external inputs are:
 
-1. **Runtime secret injection:** Are `BUILD_OPENAI_KEY`, `BUILD_ANTHROPIC_KEY`, and `BUILD_GOOGLE_KEY` injected into the LiteChat app process in the deployment environment? Do not provide key values.
-2. **Port/routing allocation:** Given the instruction to keep the existing service on port `5001`, what CodeRange route or alternate allocated port should expose this app? Do not stop or replace the existing process.
+1. **Runtime secret injection:** Inject `BUILD_OPENAI_KEY`, `BUILD_ANTHROPIC_KEY`, and `BUILD_GOOGLE_KEY` into the LiteChat app process when live proxy calls should be enabled. Do not provide key values in chat or Git.
+2. **Port/routing allocation:** CodeRange must expose the selected LiteChat port `5002` at a private route. Confirm the platform mapping/URL; do not stop or replace the existing process on `5001`.
 
-Streaming is documented by the proxy but is deferred for this MVP because it is not mandatory and the target CodeRange serving path cannot currently be tested on port `5001`.
+Streaming is documented by the proxy but is deferred for this MVP because it is not mandatory and the target CodeRange serving path on port `5002` cannot currently be verified.
 
 ## Goal
 
-Build a small, secure LiteChat-style application using Django, Python, Django templates, HTML, CSS, JavaScript, and SQLite. Users can start chats, choose an actually available provider/model, send prompts through a verified server-side proxy, receive responses, preserve multi-turn context from stored messages, and reopen saved chat history. The app must be tested through a mocked proxy boundary and verified to start on CodeRange port `5001`.
+Build a small, secure LiteChat-style application using Django, Python, Django templates, HTML, CSS, JavaScript, and SQLite. Users can start chats, choose an actually available provider/model, send prompts through a verified server-side proxy, receive responses, preserve multi-turn context from stored messages, and reopen saved chat history. The app must be tested through a mocked proxy boundary and verified on the user-selected CodeRange port `5002`; `5001` remains occupied by the existing service.
 
 ## Scope
 
@@ -47,7 +48,7 @@ Build a small, secure LiteChat-style application using Django, Python, Django te
 - Support OpenAI, Anthropic, and Google only to the extent the verified proxy explicitly supports them; expose only configured, enabled models.
 - Read proxy/provider credentials from confirmed environment variables; never expose or commit secrets.
 - Handle provider/proxy failures safely and test with a mocked proxy.
-- Validate startup/reachability and expected configuration on CodeRange port `5001`.
+- Validate startup/reachability and expected configuration on CodeRange port `5002` (the user-selected alternate to preserve the existing service on `5001`).
 - Add/update living setup, architecture, feature, testing, environment-variable, CodeRange, and proxy limitation documentation after behavior exists.
 
 ## Out of Scope
@@ -174,10 +175,10 @@ The exact project package name can be chosen during execution; these are likely 
 
 ### H. CodeRange Startup and Validation
 
-- [ ] **H1. Verify CodeRange runtime instructions and configuration** including process command, exposed host/interface, required host/CSRF settings, injected environment-variable names, outbound proxy access, and persistent writable SQLite location. Do not record actual secret values. **Partial:** port `5001` is occupied by a different Django app and the user explicitly directed us to keep it; no separate CodeRange routing/persistent-volume instructions or key injection are visible in this repo/runtime.
-- [ ] **H2. Start the application on port `5001`** using the required CodeRange-compatible command and bind address. Identify port conflicts rather than silently changing ports. **Blocked:** another Django app currently owns port 5001; its process was left untouched.
-- [ ] **H3. Verify reachability and static assets** through the CodeRange endpoint, not only local Django `runserver`. **Blocked:** port 5001 does not route to this project, and no separate CodeRange endpoint/configuration is available in the repository.
-- [ ] **H4. Exercise key flows on CodeRange:** create a new chat, select an enabled provider/model, submit and receive a response using a mock/stub or explicitly approved configured proxy, reload and reopen history, continue with prior context, and safely display a proxy failure. The equivalent mocked-proxy flows pass locally; CodeRange execution remains blocked by H2/H3.
+- [ ] **H1. Verify CodeRange runtime instructions and configuration** including process command, exposed host/interface, required host/CSRF settings, injected environment-variable names, outbound proxy access, and persistent writable SQLite location. Do not record actual secret values. **Partial:** the user selected port `5002`, but the CodeRange route, key injection, and persistent-volume/runtime configuration are not available in this repo/runtime.
+- [ ] **H2. Start the application on the user-selected port `5002`** using the required CodeRange-compatible command and bind address. Identify port conflicts rather than silently changing ports. **Partial:** local startup on `5002` is smoke-tested; CodeRange process routing/mapping has not been verified.
+- [ ] **H3. Verify reachability and static assets** through the CodeRange endpoint, not only local Django `runserver`. **Blocked:** no CodeRange URL/route mapping for port `5002` is available.
+- [ ] **H4. Exercise key flows on CodeRange:** create a new chat, select an enabled provider/model, submit and receive a response using a mock/stub or explicitly approved configured proxy, reload and reopen history, continue with prior context, and safely display a proxy failure. The equivalent mocked-proxy flows pass locally; CodeRange execution remains blocked by H2/H3 and provider keys are not injected.
 - [x] **H5. If streaming was selected, verify the real CodeRange serving/reverse-proxy path** does not buffer or prematurely terminate SSE and that disconnects close upstream work when supported. Not applicable: the MVP uses non-streaming requests.
 - [ ] **H6. Verify SQLite persistence across the expected restart lifecycle** or document if CodeRange storage is ephemeral and requires a persistent volume/configuration change. Local SQLite migrations and file-backed settings work; CodeRange storage persistence is unverified.
 
@@ -200,7 +201,7 @@ The default test suite is offline and mocks the proxy boundary. It covers provid
 - Provider/model choices match only the verified proxy catalog/allowlist and all outbound calls use the server-side proxy client.
 - New chat, prompt/response, saved history, reopen, and context continuation work with a mocked proxy; unsupported selection and upstream failure paths are safe.
 - Credentials do not appear in browser output or tracked files.
-- The application was smoke-tested through Django `runserver` on a temporary loopback port with the home page, provider endpoint, and CSS returning successfully. Target CodeRange port `5001` reachability, CodeRange static serving, and CodeRange database persistence remain blocked by the existing service and missing routing/runtime configuration.
+- The application was smoke-tested through Django `runserver` on a temporary loopback port and local `127.0.0.1:5002`, with the home page, provider endpoint, and CSS returning successfully. CodeRange port `5002` reachability, CodeRange static serving, and CodeRange database persistence remain blocked by missing routing/runtime configuration.
 - If streaming is absent or impractical, the UI uses non-streaming requests and documentation explicitly records the limitation.
 
 ## Documentation Updates
@@ -213,6 +214,6 @@ Update only living documentation under `doc/wiki/` and `doc/wiki/footguns/` as p
 - A working Django application persists conversations/messages in SQLite and supports new chats, provider/model selection from verified availability, prompt/response, saved history, reopening, and context continuation.
 - All provider calls are server-side through the verified proxy contract; no unsupported proxy behavior or model availability has been invented.
 - Proxy failures, configuration gaps, invalid inputs, and concurrency/retry cases produce safe, understandable outcomes.
-- Mocked-proxy tests pass, Django checks and migrations pass, and the key flows are verified on CodeRange port `5001` or any platform-specific blocker is clearly documented with required human follow-up.
+- Mocked-proxy tests pass, Django checks and migrations pass, and the key flows are verified on CodeRange port `5002` or any platform-specific blocker is clearly documented with required human follow-up.
 - Living documentation accurately reflects the finished code and contains no secrets.
 - The implementation remains on its execution branch until the user explicitly invokes `rendezvous`; this plan phase itself does not create a feature branch or implement application code.
