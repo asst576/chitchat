@@ -23,6 +23,7 @@
 - After restarting the `--noreload` worker with the fix, direct upstream checks return `/accounts/login/` (not a mounted path), signup/login HTTP 200, static CSS 200, and anonymous API 401. Full suite: 48 tests pass; system/migration checks pass. The supplied public CodeRange hostname could not be fetched from this environment (transport errors), so external-browser confirmation remains unavailable.
 - Added an authenticated-only sidebar greeting using the current user's non-empty profile display name or username fallback. Mounted-path tests cover missing/blank profile values and named values; all 50 tests and checks pass. The port-5001 `--noreload` worker was restarted to load the template/CSS update.
 - Renamed visible UI branding to `ChitChat` (page titles, wordmarks/monograms, and assistant label) without changing internal Django names, routes, or the proxy endpoint. All 50 tests and checks pass; port 5001 was restarted (PID `405605`), static assets and signup/login/API routes returned expected statuses, and authenticated chat/profile/billing pages were verified with `/proxy/5001/` script-path simulation.
+- Fixed the chat shell to the viewport, confined main transcript scrolling to `.conversation-area`, kept provider controls/sidebar/composer outside that scroller, and added transcript bottom clearance. At the mobile breakpoint the sidebar remains compact and the chat area takes the remaining viewport. CSS/DOM assertions and CodeRange-mounted tests pass; no browser automation is installed here, so physical scroll movement/occlusion was not visually measured.
 - Living-documentation tasks are intentionally deferred to the separately invoked `sync docs` phase. The user has not authorized rendezvous or merge.
 
 ## Goal
@@ -179,6 +180,7 @@ The billing balance should have a non-negative database constraint and be stored
 - [x] Keep upstream auth redirect targets mount-neutral so CodeRange injects the proxy prefix exactly once; preserve the prefix in browser-generated URLs. Regression tests reproduce `SCRIPT_NAME=/proxy/5001` and assert no duplicated path.
 - [x] Display an authenticated-user sidebar greeting, preferring a non-empty profile display name and otherwise the username, without altering the existing chat/account navigation or mount behavior.
 - [x] Rename visible product branding to `ChitChat` across chat, account, and assistant UI while preserving internal Django names, routes, and proxy/provider behavior.
+- [x] Bound the chat shell to the viewport so the sidebar/topbar/composer remain stationary while the transcript scrolls; provide mobile sizing and sufficient transcript bottom padding.
 
 ### F. Documentation
 
