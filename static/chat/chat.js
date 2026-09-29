@@ -174,6 +174,9 @@
         error.append(retry);
       }
       bubble.append(error);
+    } else if (message.role === "assistant") {
+      bubble.classList.add("markdown-content");
+      bubble.append(window.ChatMarkdown.render(message.content));
     } else {
       bubble.textContent = message.content;
     }

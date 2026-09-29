@@ -253,6 +253,21 @@ button { cursor: pointer; }
 .message-bubble { padding: 13px 16px; border: 1px solid var(--line); border-radius: 3px 13px 13px 13px; background: var(--panel); box-shadow: 0 5px 20px rgb(21 47 43 / 3%); font-size: 13px; line-height: 1.7; overflow-wrap: anywhere; white-space: pre-wrap; }
 .message-row.user .message-bubble { border-color: #d8e7df; border-radius: 13px 3px 13px 13px; background: #eaf2ed; }
 .message-row.failed .message-bubble { border-color: #ebc9bc; color: #8a392c; background: #fff9f5; }
+.message-bubble.markdown-content { white-space: normal; }
+.markdown-content > :first-child { margin-top: 0; }
+.markdown-content > :last-child { margin-bottom: 0; }
+.markdown-content p { margin: .65em 0; line-height: 1.7; }
+.markdown-content h1, .markdown-content h2, .markdown-content h3, .markdown-content h4, .markdown-content h5, .markdown-content h6 { margin: 1em 0 .4em; color: var(--ink); font-weight: 650; line-height: 1.3; letter-spacing: -.3px; }
+.markdown-content h1 { font-size: 1.45em; }
+.markdown-content h2 { font-size: 1.3em; }
+.markdown-content h3 { font-size: 1.15em; }
+.markdown-content h4, .markdown-content h5, .markdown-content h6 { font-size: 1.05em; }
+.markdown-content ul, .markdown-content ol { margin: .65em 0; padding-left: 1.5em; }
+.markdown-content li + li { margin-top: .25em; }
+.markdown-content code { padding: .12em .38em; border-radius: 4px; color: var(--forest); background: var(--forest-soft); font-family: "SFMono-Regular", Consolas, monospace; font-size: .9em; overflow-wrap: anywhere; }
+.markdown-content pre { max-width: 100%; margin: .8em 0; padding: 12px 14px; overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; background: #f0f3ef; }
+.markdown-content pre code { display: block; padding: 0; color: var(--ink); background: transparent; font-size: 11px; line-height: 1.6; overflow-wrap: normal; white-space: pre; }
+.markdown-content a { color: #245f57; text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 2px; overflow-wrap: anywhere; }
 .message-error { display: grid; gap: 8px; }
 .retry-button { width: fit-content; padding: 6px 10px; border: 1px solid #ddb4a4; border-radius: 6px; color: #783b2f; background: #fff; font-size: 11px; }
 .retry-button:hover { background: #fff0e9; }

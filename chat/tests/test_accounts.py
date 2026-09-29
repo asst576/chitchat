@@ -354,6 +354,7 @@ class AccountViewTests(TestCase):
         self.assertIn('class="workspace chat-workspace"', chat_html)
         self.assertIn('<base href="/proxy/5001/">', chat_html)
         self.assertIn('href="static/chat/chat.css"', chat_html)
+        self.assertIn('src="static/chat/markdown.js" defer', chat_html)
         self.assertIn('href="/proxy/5001/"', chat_html)
         self.assertIn('href="/proxy/5001/profile/"', chat_html)
         self.assertIn('href="/proxy/5001/billing/"', chat_html)
