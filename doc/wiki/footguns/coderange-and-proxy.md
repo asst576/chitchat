@@ -4,7 +4,7 @@
 
 The prior port-5001 service was stopped only after explicit user authorization. LiteChat now binds `0.0.0.0:5001`. Its health, workspace, CSS/JavaScript, provider catalog, live create/reopen/continue chat flow, and safe invalid-model response pass through the local container interface.
 
-The environment provides a `VSCODE_PROXY_URI` template for the external CodeRange port route, but requesting the port-5001 health endpoint from this execution environment fails with connection refused (errno 111). Local loopback/container-interface success does not establish external CodeRange reachability or static serving. The platform route must be repaired or verified from a network that can reach it before claiming deployment readiness. Private-access policy and SQLite persistence across restarts also remain unverified.
+The environment's `VSCODE_PROXY_URI` uses the route pattern `/proxy/{{port}}/`; for port 5001, the browser URL is `https://<workspace-host>.coderange.net/proxy/5001/`. The route hostname resolves, but requesting its `/healthz/` endpoint from this execution environment fails with connection refused (errno 111). Local loopback/container-interface success does not establish external CodeRange reachability or static serving. The CodeRange platform owner must verify/enable the private port-5001 forwarding rule and HTTPS ingress. This execution environment cannot distinguish a platform ingress issue from an egress restriction. Private-access policy and SQLite persistence across restarts also remain unverified.
 
 ## Server-Side Proxy Keys
 
